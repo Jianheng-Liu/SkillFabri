@@ -551,7 +551,7 @@ let DIMS=null,FAVS=new Set(),ME=null;
 async function loadMe(){try{ME=await API('/api/me');}catch(e){ME={user:null,login:false};}return ME;}
 function signedIn(){return !!(ME&&ME.user);}
 function askSignIn(why){
-  if(ME&&!ME.login){alert('Sign-in is not configured on this instance.');return;}
+  if(ME&&!ME.login&&!ME.upstream){alert('Sign-in is not configured on this instance.');return;}
   const d=document.getElementById('signin');if(!d)return;
   document.getElementById('signinwhy').textContent=why||'Sign in to keep your own list.';
   const P=(ME&&ME.providers)||{},up=ME&&ME.upstream;
@@ -1017,6 +1017,11 @@ function wireSplit(){
   h.addEventListener('dblclick',()=>applySplit(SPW.def));   // back to the default
 }
 function renderAddLocalOnly(el){
+  // Two different readers land here. On the public site placement is off on purpose and the
+  // answer is to run it yourself. On a local install it is off because a file or a key is
+  // missing, and the answer is the command that supplies it — telling that reader to "run it
+  // locally" is telling them to do what they are already doing.
+  if(ME&&ME.upstream)return renderAddNeeds(el);
   el.innerHTML=`<h1>Add My Skill to the graph</h1>`+
     `<p class="lede">This one runs on your machine, not here.</p>`+
     `<div class="localonly">`+
@@ -1047,6 +1052,24 @@ python explorer/app.py --port 8000</pre>`+
         `<a class="btn" href="https://github.com/Jianheng-Liu/SkillFabri" target="_blank" rel="noopener" style="width:auto;margin:0">↗ Repository and setup</a>`+
         `<button class="lobrowse" onclick="show('browse')">Browse the graph instead →</button>`+
       `</div>`+
+    `</div>`;}
+function renderAddNeeds(el){
+  const why=(CAPS&&CAPS.why)||{};
+  const need=[];
+  if(!why.embeddings)need.push(['The skill embeddings are missing.',
+    'One vector per skill, 226 MB, which is how a new skill finds its neighbours.',
+    'python tools/fetch_data.py --only skill_embeddings.npy']);
+  if(!why.api_key)need.push(['No API key is set.',
+    'Reading and labelling a SKILL.md calls a model.',
+    'export OPENROUTER_API_KEY=...']);
+  el.innerHTML=`<h1>Add My Skill to the graph</h1>`+
+    `<p class="lede">Two more things and this works.</p>`+
+    `<div class="localonly" style="max-width:660px">`+
+      need.map(([t,d,c])=>`<p><b>${t}</b> ${d}</p><pre class="localcmd">${esc(c)}</pre>`).join('')+
+      `<p style="margin-top:14px">Restart the server afterwards. Browsing, search and the `+
+      `relation graphs work without either of these.</p>`+
+      `<div class="lofoot"><button class="lobrowse" onclick="show('browse')">`+
+      `Browse the graph instead →</button></div>`+
     `</div>`;}
 function renderSPList(g){const host=document.getElementById('sprel');if(!host)return;
   const steps=(SP.data&&SP.data.steps)||[];const nmap={};(g.nodes||[]).forEach(n=>nmap[n.id]=n);
@@ -1274,7 +1297,7 @@ function selectDim(dim,val){show('browse');const go=()=>{BR={dim,val,page:0,q:''
 // honest thing is to say so up front rather than let someone paste a file and hit a 503.
 let CAPS=null;
 async function renderAdd(){const el=document.getElementById('v-add');
-  if(CAPS===null){try{CAPS=await API('/api/caps');}catch(e){CAPS={add:false,why:{}};}}
+  try{CAPS=await API('/api/caps');}catch(e){CAPS={add:false,why:{}};}   // re-read: a restart can change it
   if(!CAPS.add)return renderAddLocalOnly(el);
   el.innerHTML=`<h1>Add My Skill to the graph</h1><p class="lede">Drop your <b>SKILL.md</b> or paste it in full. Everything is extracted from the file itself — you label nothing. About 20 seconds.</p>`+
    `<div class="addwrap"><div class="form">
