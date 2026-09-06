@@ -971,16 +971,21 @@ function renderSkillPage(s){const el=document.getElementById('skillpage');const 
 // needs a high bar, a quiet skill has six and needs none. Fetch once at the floor, then pick the
 // cutoff that leaves a readable neighbourhood and move the slider there.
 const SP_TARGET=45,SP_FLOOR=0.70;
+// The right threshold is a property of the neighbourhood, not a constant: a skill with four
+// hundred neighbours needs a high bar and a quiet one needs none. Both graphs ask this, because
+// asking it separately is how the placed graph came to open fully expanded.
+function autoMinsim(sims){
+  const v=[...sims].sort((a,b)=>b-a);
+  return v.length>SP_TARGET
+    ? Math.min(0.95,Math.max(SP_FLOOR,Math.ceil(v[SP_TARGET-1]*100)/100))
+    : SP_FLOOR;}
 async function loadSPGraph(quick,auto){
   const g=await API(`/api/graph?id=${SP.id}&minsim=${auto?SP_FLOOR:SP.minsim}`);
   // typed relations only — the `similar` layer is a raw cosine candidate set, not a verified
   // relation, and at this scale it drowns the edges that were actually judged
   g.edges=(g.edges||[]).filter(e=>e.type!=='near');
   if(auto){
-    const sims=g.edges.filter(e=>e.a===SP.id||e.b===SP.id).map(e=>e.sim||0).sort((a,b)=>b-a);
-    SP.minsim=sims.length>SP_TARGET
-      ? Math.min(0.95,Math.max(SP_FLOOR,Math.ceil(sims[SP_TARGET-1]*100)/100))
-      : SP_FLOOR;
+    SP.minsim=autoMinsim(g.edges.filter(e=>e.a===SP.id||e.b===SP.id).map(e=>e.sim||0));
     const sl=document.getElementById('spsl'),sv=document.getElementById('spsv');
     if(sl)sl.value=SP.minsim;if(sv)sv.textContent=SP.minsim.toFixed(2);
   }
@@ -1043,7 +1048,7 @@ export OPENROUTER_API_KEY=...
 
 python explorer/app.py --port 8000</pre>`+
       `<div class="lofoot">`+
-        `<a class="btn" href="https://github.com/Jianheng-Liu/skillfabri-local" target="_blank" rel="noopener" style="width:auto;margin:0">↗ Repository and setup</a>`+
+        `<a class="btn" href="https://github.com/Jianheng-Liu/SkillFabri" target="_blank" rel="noopener" style="width:auto;margin:0">↗ Repository and setup</a>`+
         `<button class="lobrowse" onclick="show('browse')">Browse the graph instead →</button>`+
       `</div>`+
     `</div>`;}
@@ -1389,11 +1394,13 @@ async function renderMine(){const el=document.getElementById('v-mine');el.innerH
   const fav=document.getElementById('minefav');fav.innerHTML=m.favorites.length?m.favorites.map(cardHTML).join(''):'<div class="empty" style="grid-column:1/-1">No favourites — tap ♡ on any skill.</div>';wireCards(fav);}
 let SPA={min:0.70,s:null,_t:null};
 function showAdded(s){const el=document.getElementById('skillpage');const typed=(s.neighbours||[]).filter(n=>n.type);
-  const sims=(s.neighbours||[]).map(n=>n.sim||0);const lo=sims.length?Math.floor(Math.min(...sims)*100)/100:0.70,hi=Math.max(0.90,...sims);
-  SPA={min:lo,s,_t:null};
+  const sims=(s.neighbours||[]).map(n=>n.sim||0);
+  const lo=sims.length?Math.floor(Math.min(...sims)*100)/100:0.70,hi=Math.max(0.90,...sims);
+  const start=Math.min(Math.max(autoMinsim(sims),lo),hi);   // same rule as a skill's own page
+  SPA={min:start,s,_t:null};
   el.innerHTML=`<div class="sptop"><button class="spback" onclick="closeSkill()">←</button><span class="sptitle">${esc(s.name)}</span><span class="tag">yours</span>`+
     `<span class="tag act" style="background:${actCol(s.activity)}">${esc(s.activity)}</span><span class="tag cap">${esc(s.capability)}</span>`+
-    `<span class="spslider">similarity ≥ <b id="spsv">${lo.toFixed(2)}</b><input type="range" id="spsl" min="${lo}" max="${hi.toFixed(2)}" step="0.01" value="${lo}">`+
+    `<span class="spslider">similarity ≥ <b id="spsv">${start.toFixed(2)}</b><input type="range" id="spsl" min="${lo}" max="${hi.toFixed(2)}" step="0.01" value="${start}">`+
     `<span style="display:flex;gap:9px;margin-left:4px"><span><span class="dot" style="background:${cssv('--contain')}"></span>contain</span><span><span class="dot" style="background:${cssv('--same')}"></span>same</span><span><span class="dot" style="background:${cssv('--inter')}"></span>intersect</span></span></span></div>`+
     `<div class="spbody"><div class="spgraph"><div id="spg" style="width:100%;height:100%"></div><div class="spgcount" id="spgc"></div></div>`+
     `<div class="spdrag" id="spdrag" title="drag to resize"></div>`+
