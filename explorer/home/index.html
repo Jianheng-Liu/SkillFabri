@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SkillFabri — Modeling, organizing, and connecting agent skills</title>
+    
+    <meta name="description" content="A typed relational graph of the software-engineering agent-skill market — grounded in what skills actually do, not how they are advertised.">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <meta name="robots" content="index, follow">
+    <meta property="og:title" content="SkillFabri — Modeling, organizing, and connecting agent skills">
+    <meta property="og:description" content="A typed relational graph of the software-engineering agent-skill market — grounded in what skills actually do, not how they are advertised.">
+    <meta property="og:type" content="website">
+    <script type="module" src="assets/app.js"></script>
+    <link rel="stylesheet" href="assets/app.css">
+  </head>
+  <body>
+    
+    <div id="root"></div>
+    
+  <style>
+  /* one palette, two themes — the bundle reads these at load, the explorer mirrors them */
+  :root,:root[data-theme=dark]{
+    --sf-bg:#17171C; --sf-ink:#ECECF2; --sf-ink2:#A9A9B4; --sf-ink3:#7A7A86;
+    --sf-card:#212128; --sf-panel2:#1C1C22;
+    --sf-border:rgba(255,255,255,0.09); --sf-borderS:rgba(255,255,255,0.17);
+    --sf-primary:#7A8DF2; --sf-priLt:rgba(122,141,242,0.15);
+    --sf-dark:#101014; --sf-dark2:#1C1C24;
+    --sf-navbg:rgba(23,23,28,0.92);
+    --sf-band:#101014; --sf-bandInk:#FAFAF6;
+    --sf-bandInk2:rgba(250,250,246,0.70); --sf-bandInk3:rgba(250,250,246,0.50);
+    --sf-bandInk4:rgba(248,247,241,0.30);
+    --sf-bandLine:rgba(255,255,255,0.07); --sf-bandFill:rgba(255,255,255,0.07);
+    --sf-bandEdge:rgba(255,255,255,0.05);
+    color-scheme:dark;
+  }
+  :root[data-theme=light]{
+    --sf-bg:#F8F7F1; --sf-ink:#141414; --sf-ink2:#4D4D4D; --sf-ink3:#9A9A9A;
+    --sf-card:#FFFFFF; --sf-panel2:#FAFAF6;
+    --sf-border:rgba(0,0,0,0.08); --sf-borderS:rgba(0,0,0,0.14);
+    --sf-primary:#2847E0; --sf-priLt:rgba(40,71,224,0.07);
+    --sf-dark:#0F0F12; --sf-dark2:#1A1A20;
+    --sf-navbg:rgba(248,247,241,0.92);
+    /* one soft step down from the page, not a slab — the section reads as a break, not a wall */
+    --sf-band:#F1EFE5; --sf-bandInk:#141414;
+    --sf-bandInk2:rgba(20,20,20,0.66); --sf-bandInk3:rgba(20,20,20,0.50);
+    --sf-bandInk4:rgba(20,20,20,0.34);
+    --sf-bandLine:rgba(0,0,0,0.07); --sf-bandFill:rgba(0,0,0,0.04);
+    --sf-bandEdge:rgba(0,0,0,0.06);
+    color-scheme:light;
+  }
+  html,body{background:var(--sf-bg);color:var(--sf-ink)}
+  /* The buttons cannot live in the nav (React owns it and drops foreign children), so they ride
+     a fixed bar of their own that repeats the header's container geometry — max-w-7xl, centred,
+     px-6/md:px-10. That lands them the same distance from the right edge as the wordmark is
+     from the left, instead of jammed against the viewport. */
+  .sf-tools{position:fixed;top:0;left:0;right:0;height:3.5rem;z-index:90;pointer-events:none;
+    max-width:80rem;margin:0 auto;padding:0 1.5rem;
+    display:flex;align-items:center;justify-content:flex-end;gap:9px}
+  @media (min-width:768px){.sf-tools{padding:0 2.5rem}}
+  .sf-tools>*{pointer-events:auto}
+  .sf-theme,.sf-gh{width:32px;height:32px;border-radius:9px;flex:none;
+    border:1px solid var(--sf-border);background:var(--sf-card);color:var(--sf-ink2);cursor:pointer;
+    font-size:13px;line-height:1;display:grid;place-items:center;text-decoration:none;
+    transition:color .15s,border-color .15s}
+  .sf-theme:hover,.sf-gh:hover{color:var(--sf-primary);border-color:var(--sf-primary)}
+  /* The nav used to be `hidden md:flex` — on a phone it was simply not there, and nothing
+     replaced it. It is always on now; below 640px the labels shrink and the row scrolls
+     rather than being clipped, so all four stay reachable without a hamburger. */
+  .sf-nav{min-width:0;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
+  .sf-nav::-webkit-scrollbar{display:none}
+  .sf-nav>a{white-space:nowrap;flex:none}
+  /* One row cannot hold the wordmark and four labels on a narrow phone: at 375px it leaves
+     234px for about 242px of text, so the last two links fall off the edge. Shrinking the type
+     only moves that cliff. The nav takes its own row instead, which gives it the full width —
+     343px at 375px, comfortably more than it needs — and stops depending on the estimate. */
+  .sf-who{display:inline-flex;align-items:center;flex:none}
+  .sf-signin{display:inline-flex;align-items:center;height:32px;padding:0 15px;border-radius:9px;
+    background:var(--sf-primary);color:#fff;text-decoration:none;white-space:nowrap;
+    font-family:Inter,sans-serif;font-size:12.5px;font-weight:600;
+    box-shadow:0 1px 3px rgba(0,0,0,.12);transition:filter .15s}
+  .sf-signin:hover{filter:brightness(1.08)}
+  .sf-avatar{width:32px;height:32px;border-radius:50%;overflow:hidden;display:grid;place-items:center;
+    border:1px solid var(--sf-border);background:var(--sf-card);color:var(--sf-ink2);
+    text-decoration:none;font-family:Inter,sans-serif;font-size:13px;font-weight:700}
+  .sf-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+  .sf-burger{display:none;width:32px;height:32px;border-radius:9px;flex:none;
+    border:1px solid var(--sf-border);background:var(--sf-card);color:var(--sf-ink2);cursor:pointer;
+    place-items:center;transition:color .15s,border-color .15s}
+  .sf-burger:hover,.sf-burger[aria-expanded=true]{color:var(--sf-primary);border-color:var(--sf-primary)}
+  .sf-menu{display:none;position:fixed;top:52px;left:1rem;right:1rem;z-index:95;
+    background:var(--sf-card);border:1px solid var(--sf-border);border-radius:13px;padding:7px;
+    box-shadow:0 14px 36px rgba(0,0,0,.24);flex-direction:column}
+  .sf-menu.open{display:flex}
+  .sf-menu>a{display:block;padding:12px 13px;border-radius:9px;text-decoration:none;
+    color:var(--sf-ink);font-family:Inter,sans-serif;font-size:14.5px;font-weight:500}
+  .sf-menu>a:active{background:var(--sf-panel2)}
+  @media (max-width:680px){
+    .sf-nav{display:none !important}   /* replaced by the menu; four labels do not fit here */
+    .sf-burger{display:grid}
+    .sf-theme,.sf-gh{width:28px;height:28px}
+    .sf-tools{padding:0 1rem;gap:7px}
+  }
+  </style>
+  <script>
+  /* set before first paint so the page never flashes the wrong theme; dark unless asked otherwise */
+  (function(){try{var t=localStorage.getItem('sf-theme')||'dark';
+    document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+  </script>
+  <script src="icons.js" defer></script>
+  <script src="hydrate.js" defer></script>
+  <script>
+  /* The landing page is the published build, untouched apart from its link labels. Rather than
+     patching React internals, routing is a single delegated listener: it reads the clicked text
+     and sends it to the explorer, which reads the hash on load. */
+  (function(){
+    var GO = {
+      'browse':'/app', 'open explorer':'/app', 'explore →':'/app',
+      'browse skills':'/app', 'browse all 670+ skills →':'/app',
+      'graph':'/app#graph', 'skill graph':'/app#graph', 'browse the graph':'/app#graph',
+      'duplicates':'/app#dups',
+      'add my skill':'/app#add', 'my skills':'/app#mine', 'my skills ':'/app#mine',
+      'source':'https://github.com/Jianheng-Liu/SkillFabri',
+      'methodology':'https://github.com/Jianheng-Liu/SkillFabri'
+    };
+    document.addEventListener('click', function(ev){
+      var el = ev.target.closest('a,button,[class*="card"]');
+      if(!el) return;
+      var t = (el.textContent||'').trim().toLowerCase();
+      var to = GO[t];
+      if(!to){                                   // skill / category tiles carry no keyword — open the explorer
+        var tile = ev.target.closest('.card-hover');
+        if(tile) to = '/app';
+      }
+      if(!to) return;
+      ev.preventDefault();
+      if(to.charAt(0)==='/') location.href = to; else window.open(to,'_blank','noopener');
+    }, true);
+    // the hero search box hands its query to the explorer
+    document.addEventListener('keydown', function(ev){
+      if(ev.key!=='Enter') return;
+      var i = ev.target;
+      if(i && i.tagName==='INPUT' && /search/i.test(i.placeholder||'')){
+        ev.preventDefault();
+        location.href = '/app#q=' + encodeURIComponent(i.value.trim());
+      }
+    }, true);
+  })();
+  </script>
+  </body>
+</html>

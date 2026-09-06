@@ -1,0 +1,22 @@
+# secrets — never commit
+env.sh
+
+# too large for git — tools/fetch_data.py pulls these from Hugging Face
+data/skill_embeddings.npy
+data/skill_embeddings.npy.part
+data/step_embeddings.npz
+data/step_embeddings.npz.part
+
+# accounts, saved skills and uploads
+data/user.db
+data/user.db-wal
+data/user.db-shm
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# os
+.DS_Store

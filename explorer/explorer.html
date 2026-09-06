@@ -1,0 +1,1357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SkillFabri — SE Agent Skill Market</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<meta name="description" content="Browse the software-engineering agent-skill market by activity and capability, and open any skill's relation graph.">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+:root{
+  --bg:#F8F7F1;--panel:#FFFFFF;--panel2:#FAF9F5;--ink:#141414;--ink2:#4D4D4D;--muted:#9A9A9A;--line:rgba(0,0,0,0.08);--line2:rgba(0,0,0,0.05);
+  --accent:#2847E0;--accent-soft:rgba(40,71,224,0.07);--same:#E8590C;--inter:#14B8A6;--contain:#2847E0;--fav:#E84040;
+  --mono:'JetBrains Mono',ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --sans:'Inter',ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --display:'Bricolage Grotesque',var(--sans);
+  --hh:56px;                                  /* header height — #skillpage and .rail derive from it */
+  --esame:#D2703A;--einter:#2F8E80;--econtain:#5566C0;
+  --nfill:0.24;--nfillc:0.40;--nhalo:0.12;--nstroke:1;
+  --shadow:0 1px 3px rgba(20,20,20,.06),0 8px 28px rgba(20,20,20,.07);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#17171C;--panel:#212128;--panel2:#1C1C22;--ink:#ECECF2;--ink2:#B4BAC8;--muted:#7A7A86;--line:rgba(255,255,255,0.09);--line2:rgba(255,255,255,0.05);
+  --accent:#7A8DF2;--accent-soft:rgba(122,141,242,0.14);--same:#F2874A;--inter:#1FBE9C;--contain:#7A8DF2;--fav:#EE5555;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 34px rgba(0,0,0,.34);
+}}
+:root[data-theme=dark]{
+  --bg:#17171C;--panel:#212128;--panel2:#1C1C22;--ink:#ECECF2;--ink2:#B4BAC8;--muted:#7A7A86;--line:rgba(255,255,255,0.09);--line2:rgba(255,255,255,0.05);
+  --accent:#7A8DF2;--accent-soft:rgba(122,141,242,0.14);--same:#F2874A;--inter:#1FBE9C;--contain:#7A8DF2;--fav:#EE5555;
+  /* edges get their own, deliberately duller palette — chips and legend keep the saturated one */
+  --esame:#C4753F;--einter:#3F9385;--econtain:#6B77BC;
+  --nfill:0.15;--nfillc:0.28;--nhalo:0.075;--nstroke:0.72;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 34px rgba(0,0,0,.34);
+}
+:root[data-theme=light]{
+  --bg:#F8F7F1;--panel:#FFFFFF;--panel2:#FAF9F5;--ink:#141414;--ink2:#4D4D4D;--muted:#9A9A9A;--line:rgba(0,0,0,0.08);--line2:rgba(0,0,0,0.05);
+  --accent:#2847E0;--accent-soft:rgba(40,71,224,0.07);--same:#E8590C;--inter:#14B8A6;--contain:#2847E0;--fav:#E84040;
+  --esame:#D2703A;--einter:#2F8E80;--econtain:#5566C0;
+  --nfill:0.24;--nfillc:0.40;--nhalo:0.12;--nstroke:1;
+  --shadow:0 1px 3px rgba(20,20,20,.06),0 8px 28px rgba(20,20,20,.07);
+}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:14.5px;-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}.mono{font-family:var(--mono)}.tnum{font-variant-numeric:tabular-nums}
+header{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--panel) 86%,transparent);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:32px;height:var(--hh);padding:0 26px}
+@media(max-width:760px){.bar{padding:0 18px;gap:20px}}
+/* Below this the four nav items plus the wordmark need ~450px and the bar is a non-wrapping
+   flex row, so they were being clipped off the right edge — invisible, not merely cramped.
+   The mark alone still identifies the site, so the word goes and the row scrolls if it must. */
+/* Four labels do not fit beside the wordmark on a phone, and neither shrinking them nor giving
+   them their own row survived contact with a real device. A menu removes the constraint instead
+   of negotiating with it: the header stays one row at any width, and the items stack. */
+.navtgl{display:none;background:none;border:1px solid var(--line);border-radius:9px;
+  width:34px;height:32px;cursor:pointer;color:var(--ink2);place-items:center;flex:none;
+  transition:color .15s,border-color .15s}
+.navtgl:hover,.navtgl[aria-expanded=true]{color:var(--accent);border-color:var(--accent)}
+@media(max-width:680px){
+  .bar{gap:12px;padding:0 14px}
+  .navtgl{display:grid}
+  nav{position:absolute;top:calc(var(--hh) - 5px);left:12px;right:12px;z-index:60;
+    display:none;flex-direction:column;align-items:stretch;gap:2px;
+    background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:7px;
+    box-shadow:0 12px 32px rgba(0,0,0,.22)}
+  nav.open{display:flex}
+  nav button{width:100%;text-align:left;font-size:14.5px;padding:12px 13px;border-radius:9px}
+  nav button.on{background:var(--accent-soft)}
+  nav button:active{background:var(--line2)}
+}
+@media(max-width:360px){.wm{display:none}}
+.brand{display:flex;align-items:center;gap:10px;cursor:pointer}
+.brand .wm{font-family:var(--display);font-weight:800;font-size:1.05rem;letter-spacing:-.02em;color:var(--ink);white-space:nowrap}
+.brand .wm b{color:var(--accent);font-weight:800}
+.search{flex:1;max-width:560px;position:relative}
+.search input{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 14px 9px 38px;color:var(--ink);font:inherit;font-size:14px}
+.search input:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+.search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted)}
+nav{display:flex;align-items:center;gap:24px}
+nav button{background:none;border:0;padding:0;font-family:var(--sans);font-size:13px;font-weight:500;color:var(--ink2);
+  cursor:pointer;white-space:nowrap;transition:color .15s}
+nav button:hover{color:var(--ink)}
+/* the active page is marked by colour alone — no pill, no background */
+nav button.on{color:var(--accent)}
+#signin{position:fixed;inset:0;z-index:95;display:none;align-items:center;justify-content:center;
+  background:rgba(8,10,16,.55);padding:22px;backdrop-filter:blur(3px)}
+#signin.on{display:flex}
+.who{display:inline-flex;align-items:center;gap:9px;flex:none;order:2}
+.themetgl{margin-left:auto}                 /* pushes the pair to the edge; .who then sits last */
+.whobtn{width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--panel);
+  cursor:pointer;padding:0;overflow:hidden;display:grid;place-items:center;color:var(--ink2);
+  transition:border-color .15s}
+.whobtn:hover{border-color:var(--accent)}
+.whobtn img{width:100%;height:100%;object-fit:cover;display:block}
+.whoin{font-family:var(--sans);font-size:13px;font-weight:700;text-transform:uppercase}
+.whobtn.signin{width:auto;border-radius:9px;padding:0 15px;height:32px;font-family:var(--sans);
+  font-size:12.5px;font-weight:600;background:var(--accent);border-color:var(--accent);color:#fff;
+  white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.whobtn.signin:hover{filter:brightness(1.08)}
+.prov{display:flex;flex-direction:column;align-items:center;gap:10px}
+.prov>div{display:flex;justify-content:center}
+.ghbtn{display:flex;align-items:center;justify-content:center;gap:10px;
+  width:280px;height:40px;box-sizing:border-box;border-radius:20px;
+  background:#24292F;color:#fff;text-decoration:none;
+  font-family:var(--sans);font-size:14px;font-weight:500;transition:filter .15s}
+.ghbtn:hover{filter:brightness(1.25)}
+:root[data-theme=dark] .ghbtn{background:#30363D}
+.whoout{background:none;border:0;color:var(--muted);cursor:pointer;font-family:var(--sans);
+  font-size:12px;padding:0;transition:color .15s}
+.whoout:hover{color:var(--accent)}
+@media(max-width:680px){.whoout{display:none}}
+.themetgl{width:32px;height:32px;border-radius:9px;border:1px solid var(--line);flex:none;
+  background:var(--panel);color:var(--ink2);cursor:pointer;font-size:14px;line-height:1;
+  display:grid;place-items:center;transition:color .15s,border-color .15s}
+.themetgl:hover{color:var(--accent);border-color:var(--accent)}
+main{max-width:1660px;margin:0 auto}
+.pad{padding:26px}
+.vic{display:inline-flex;align-items:center}
+.lcount{font-family:var(--mono);font-size:11.5px;color:var(--ink2);font-weight:500;
+  background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:3px 10px;white-space:nowrap}
+/* the search lives with the results now, not in the top bar */
+.brsearch{display:flex;align-items:center;gap:9px;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:9px 13px;margin:0 0 18px;box-shadow:0 1px 3px rgba(0,0,0,.04);color:var(--muted)}
+.brsearch:focus-within{border-color:rgba(40,71,224,.4)}
+.brsearch input{flex:1;border:0;background:none;font:inherit;font-size:13px;color:var(--ink);outline:none}
+.brsearch input::placeholder{color:var(--muted)}
+.view{display:none}.view.on{display:block}
+h1,h2,.brand,.dhead h2,.imhead h2,.sptitle{font-family:var(--display)}
+h1{font-size:27px;letter-spacing:-.03em;margin:0 0 6px;font-weight:800;text-wrap:balance}
+.lede{color:var(--ink2);font-size:15px;max-width:82ch;margin:0 0 20px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin:32px 0 13px;font-weight:500}
+/* ---- HERO (legacy, kept for non-overview uses) ---- */
+.hero{position:relative;height:min(74vh,680px);overflow:hidden;border-bottom:1px solid var(--line);background:radial-gradient(120% 90% at 50% -10%,var(--accent-soft),transparent 60%)}
+.hero svg{position:absolute;inset:0;width:100%;height:100%}
+.heroover{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:0 8vw;pointer-events:none;z-index:2}
+.heroover .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:14px;opacity:0;animation:rise .7s .1s forwards}
+.heroover h1{font-size:clamp(30px,5vw,58px);line-height:1.04;margin:0;max-width:16ch;letter-spacing:-.03em;opacity:0;animation:rise .8s .2s forwards}
+.heroover p{font-size:clamp(15px,1.6vw,19px);color:var(--ink2);max-width:52ch;margin:18px 0 0;opacity:0;animation:rise .8s .35s forwards}
+.herostat{display:flex;gap:30px;margin-top:26px;pointer-events:auto;opacity:0;animation:rise .8s .5s forwards;flex-wrap:wrap}
+.herostat div{display:flex;flex-direction:column}
+.herostat b{font-family:var(--mono);font-size:26px;font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+.herostat span{font-size:12px;color:var(--muted)}
+.herohint{position:absolute;bottom:16px;left:0;right:0;text-align:center;font-size:12px;color:var(--muted);z-index:2;opacity:0;animation:rise 1s .8s forwards}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+/* ---- Overview hero ---- */
+
+.view-body{padding:0 28px 40px}
+.sf-hero{padding:44px 28px 32px;border-bottom:1px solid var(--line);position:relative;overflow:hidden}
+.sf-hero::before{content:'';position:absolute;right:-8%;top:-40%;width:55%;height:160%;background:radial-gradient(ellipse at center,rgba(40,71,224,0.05) 0%,transparent 65%);pointer-events:none}
+.sf-badge{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10px;letter-spacing:.09em;color:var(--accent);background:var(--accent-soft);border:1px solid rgba(40,71,224,0.18);padding:5px 12px;border-radius:100px;margin-bottom:18px}
+.sf-pulse{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:sf-pulse-anim 2s ease-in-out infinite;flex-shrink:0}
+@keyframes sf-pulse-anim{0%,100%{opacity:1}50%{opacity:.3}}
+.sf-hero h1{font-family:var(--display);font-weight:800;font-size:clamp(2rem,4.5vw,3.5rem);letter-spacing:-0.03em;line-height:1.04;margin:0 0 16px}
+.sf-hero .lede{font-size:15px;line-height:1.75;max-width:56ch;color:var(--ink2);margin-bottom:28px}
+.sf-stats{display:flex;gap:36px;flex-wrap:wrap}
+.sf-stats div{display:flex;flex-direction:column}
+.sf-stats b{font-family:var(--display);font-size:1.7rem;font-weight:800;letter-spacing:-0.03em;color:var(--ink)}
+.sf-stats span{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:2px}
+/* ---- cards ---- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:15px 16px;cursor:pointer;transition:border-color .12s,transform .12s,box-shadow .12s;position:relative}
+.card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:var(--shadow)}
+.card .top{display:flex;align-items:baseline;gap:8px;margin-bottom:5px}
+.card .nm{font-weight:600;font-size:15px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .pop{font-family:var(--mono);font-size:11.5px;color:var(--muted);white-space:nowrap}.card .pop b{color:var(--inter)}
+.card .sum{font-size:12.8px;color:var(--ink2);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:37px}
+.card .meta{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.tag{font-family:var(--mono);font-size:10.5px;padding:2px 7px;border-radius:20px;background:var(--panel2);border:1px solid var(--line);color:var(--ink2);white-space:nowrap}
+.tag.act{color:#fff;border:0}.tag.cap{color:var(--ink)}
+.favb{background:none;border:0;cursor:pointer;font-size:16px;color:var(--muted);line-height:1;opacity:.55;padding:0 0 0 2px;flex-shrink:0}
+#spfav{font-family:var(--sans);font-size:13px;font-weight:600;letter-spacing:0;opacity:1;margin-left:auto;
+  color:var(--ink2);border:1px solid var(--line);border-radius:9px;padding:6px 13px;display:inline-flex;
+  align-items:center;gap:6px;transition:color .13s,border-color .13s,background .13s}
+#spfav:hover{color:var(--fav);border-color:var(--fav)}
+#spfav.on{color:var(--fav);border-color:color-mix(in srgb,var(--fav) 45%,transparent);
+  background:color-mix(in srgb,var(--fav) 10%,transparent)}
+.favb.on{color:var(--fav);opacity:1}.card:hover .favb{opacity:1}
+/* ---- browse (dimension picker) ---- */
+.browse{display:grid;grid-template-columns:190px minmax(0,1fr);gap:26px;align-items:start}
+@media(max-width:820px){.browse{grid-template-columns:1fr}}
+.brmain{min-width:0;overflow-wrap:anywhere}
+.rail{position:sticky;top:calc(var(--hh) + 22px);display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - var(--hh) - 44px)}
+.seg{display:flex;flex-direction:column;gap:2px;background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:4px}
+.seg button{background:none;border:0;color:var(--ink2);font:inherit;font-size:13px;font-weight:500;
+  padding:8px 11px;border-radius:8px;cursor:pointer;white-space:nowrap;text-align:left;width:100%}
+.seg button.on{background:var(--panel);color:var(--accent);box-shadow:var(--shadow)}
+.seg button:hover:not(.on){color:var(--ink)}
+.vfilter{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--ink);font:inherit;font-size:13px}
+.vfilter:focus{outline:none;border-color:rgba(40,71,224,.35);box-shadow:0 0 0 3px var(--accent-soft)}
+.dd{position:relative;display:inline-block}
+.dd-btn{display:inline-flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);border-radius:8px;
+  padding:5px 9px 5px 11px;font-family:var(--mono);font-size:11px;letter-spacing:.02em;color:var(--ink);cursor:pointer;
+  transition:border-color .15s,box-shadow .15s}
+.dd-btn:hover{border-color:var(--lineS)}
+.dd.open .dd-btn{border-color:rgba(40,71,224,.35);box-shadow:0 0 0 3px var(--accent-soft)}
+.dd-btn svg{opacity:.55;transition:transform .15s}
+.dd.open .dd-btn svg{transform:rotate(180deg)}
+.dd-menu{position:absolute;z-index:60;top:calc(100% + 6px);left:0;min-width:100%;white-space:nowrap;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:5px;
+  box-shadow:0 8px 28px rgba(0,0,0,.10);display:none}
+.dd.open .dd-menu{display:block}
+.dd-item{display:block;width:100%;text-align:left;background:none;border:0;border-radius:7px;cursor:pointer;
+  padding:6px 10px;font-family:var(--mono);font-size:11px;color:var(--ink2);transition:background .12s,color .12s}
+.dd-item:hover{background:var(--panel2);color:var(--ink)}
+.dd-item.on{color:var(--accent)}
+/* the dimension's values, as tabs above the results */
+.vtiles{margin-bottom:18px}
+.vbar{display:flex;align-items:center;gap:10px;margin-bottom:11px;flex-wrap:wrap}
+.vmore{background:none;border:1px solid var(--line);border-radius:9px;color:var(--ink2);cursor:pointer;
+  font-family:var(--mono);font-size:11px;padding:7px 12px;white-space:nowrap;
+  transition:color .15s,border-color .15s}
+.vmore:hover{color:var(--accent);border-color:var(--accent)}
+/* the landing page's category card, to the unit: 16px padding, 12px radius, a 20px icon over
+   a 13px name over a 9.5px mono count. Matching it is the point — this is the same object. */
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(214px,1fr));gap:12px}
+.vgrid.noic{grid-template-columns:repeat(auto-fill,minmax(178px,1fr))}
+.vcard{display:flex;flex-direction:column;align-items:flex-start;text-align:left;
+  background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;
+  cursor:pointer;font:inherit;color:var(--ink);min-width:0;
+  box-shadow:0 1px 3px rgba(0,0,0,.04);
+  transition:border-color .16s,transform .16s,box-shadow .16s}
+.vcard:hover{transform:translateY(-2px);box-shadow:0 5px 16px rgba(0,0,0,.11);
+  border-color:color-mix(in srgb,var(--vc,var(--accent)) 55%,transparent)}
+.vcard .vic{display:inline-flex;color:var(--vc,var(--muted));margin-bottom:10px}
+.vcard .vn{font-weight:600;font-size:13px;line-height:1.35;margin-bottom:3px;overflow-wrap:anywhere}
+.vcard .vc{font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;color:var(--muted)}
+/* no icon, no reason to keep its height — the text-only dimensions get a shorter card */
+.vgrid.noic .vcard{padding:13px 15px}
+.vcard.vall{align-items:center;justify-content:center;background:transparent;box-shadow:none;
+  border-style:dashed;border-color:var(--borderS,var(--line));color:var(--ink2);font-size:12.5px}
+.vcard.vall:hover{color:var(--accent);border-color:var(--accent);transform:none;box-shadow:none}
+.vback{background:none;border:1px solid var(--line);border-radius:9px;color:var(--ink2);cursor:pointer;
+  font-family:var(--sans);font-size:12.5px;font-weight:600;padding:8px 14px;
+  transition:color .15s,border-color .15s}
+.vback:hover{color:var(--accent);border-color:var(--accent)}
+.vnote{font-size:12.5px;color:var(--muted);padding:14px 12px;line-height:1.5}
+.rail{position:sticky;top:calc(var(--hh) + 22px);background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:8px;max-height:calc(100vh - var(--hh) - 44px);overflow:auto}
+.rail .dsec{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:11px 10px 5px;font-weight:500}
+.rail button{display:flex;justify-content:space-between;gap:8px;width:100%;text-align:left;background:none;border:0;color:var(--ink2);font:inherit;font-size:13px;padding:6px 10px;border-radius:7px;cursor:pointer}
+.rail button:hover{background:var(--line2)}.rail button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.rail button .c{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.listhead{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px}.listhead h2{font-size:19px;margin:0;font-family:var(--display);font-weight:700;letter-spacing:-.02em}.listhead .n{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+.pager{display:flex;justify-content:center;gap:8px;margin:22px 0 4px}
+.pager button{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 14px;font:inherit;font-size:13px;color:var(--ink);cursor:pointer}
+.pager button:disabled{opacity:.4;cursor:default}
+/* ---- drawer + graph ---- */
+.drawer{position:fixed;top:0;right:0;height:100vh;width:min(680px,96vw);background:var(--panel);border-left:1px solid var(--line);box-shadow:-16px 0 44px rgba(0,0,0,.16);z-index:60;transform:translateX(100%);transition:transform .24s cubic-bezier(.4,0,.2,1);overflow:auto}
+.drawer.on{transform:none}
+.dscrim{position:fixed;inset:0;background:rgba(8,10,16,.36);opacity:0;pointer-events:none;transition:opacity .2s;z-index:55}.dscrim.on{opacity:1;pointer-events:auto}
+.dhead{padding:19px 24px 13px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:2}
+.dhead .x{position:absolute;top:15px;right:18px;background:none;border:1px solid var(--line);border-radius:8px;width:30px;height:30px;cursor:pointer;color:var(--ink2);font-size:16px}
+.dhead h2{font-size:20px;margin:0 40px 6px 0;letter-spacing:-.02em;font-family:var(--display);font-weight:700}
+.dbody{padding:0 0 40px}
+.ngraph{position:relative;background:var(--panel2);border-bottom:1px solid var(--line)}
+.ngraph svg{width:100%;height:340px;display:block}
+.ngctl{position:absolute;top:10px;left:12px;right:12px;display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11.5px;color:var(--ink2);z-index:2}
+.ngctl input[type=range]{flex:1;max-width:220px;accent-color:var(--accent)}
+.ngctl .lg{display:flex;gap:11px;margin-left:auto;flex-wrap:wrap}
+.ngctl .lg span{display:flex;align-items:center;gap:5px}
+.dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+.dsec2{padding:16px 24px 0}
+.kv{display:flex;gap:8px;flex-wrap:wrap;margin:3px 0 12px}
+.origin{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin:2px 0 10px}
+.relb{display:inline-flex;align-items:center;gap:3px;font-family:var(--mono);font-size:10.5px;padding:1px 6px;border-radius:5px;border:1px solid var(--line);color:var(--ink2)}
+.relb.dup{border-color:var(--same);color:var(--same)}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.stat .big{font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.stat .cap2{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.45}
+.dupbar{height:6px;border-radius:3px;background:var(--panel2);overflow:hidden;margin-top:6px}
+.dupbar i{display:block;height:100%;background:var(--same)}
+.rrow{display:flex;align-items:center;gap:10px;padding:7px 2px;font-size:13px;border-bottom:1px solid var(--line);cursor:pointer}
+.rrow:hover{background:var(--panel2)}
+.rrow .rn2{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow .rq{font-family:var(--mono);font-size:11px;color:var(--muted);flex:none}
+.origin a{color:var(--ink2);text-decoration:none;border-bottom:1px solid var(--line)}
+.origin a:hover{color:var(--accent);border-color:var(--accent)}
+.origin a.osrc{font-family:var(--mono);font-size:10.5px;padding:3px 9px;border-radius:20px;
+  background:var(--panel2);border:1px solid var(--line);display:inline-flex;align-items:center;gap:4px;
+  transition:color .15s,border-color .15s}
+.origin a.osrc:hover{color:var(--accent);border-color:var(--accent)}
+.origin .by{font-family:var(--mono);font-size:11px}
+.dsum{color:var(--ink2);font-size:14px;line-height:1.55;margin:6px 0 14px}
+.steps{display:flex;flex-direction:column;align-items:flex-start;gap:4px;font-size:12px;margin:6px 0 16px}.steps span{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:2px 8px;color:var(--ink2);transition:background .12s,color .12s}
+.wflist{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.wstep.shl{background:var(--accent) !important;color:#fff !important;border-color:var(--accent) !important}
+.rshare{flex-basis:100%;font-size:11px;color:var(--accent);margin:2px 0 0 2px}
+.relcount{margin-left:auto;font-weight:400;color:var(--ink2)}
+.rsx{font-family:var(--mono);font-size:10px;color:var(--muted);flex:none;background:none;border:1px solid var(--line);
+  border-radius:6px;padding:1px 5px;cursor:pointer;transition:border-color .15s,color .15s}
+.rsx:hover{border-color:var(--inter);color:var(--inter)}
+.relitem .rshare{display:none}
+.relitem.open .rshare{display:block;margin:2px 0 8px 6px;padding-left:9px;border-left:2px solid var(--line);
+  font-size:11.5px;line-height:1.65;color:var(--ink2)}
+.relitem.open .rsx{border-color:var(--inter);color:var(--inter)}
+.relsec{margin-top:18px}
+.relsec:first-child{margin-top:6px}
+.relhead{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 6px;font-weight:500;display:flex;align-items:center;gap:7px;min-height:18px}
+.relrow{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:7px 6px;border-top:1px solid var(--line2);cursor:pointer;border-radius:7px}
+.relrow:hover{background:var(--line2)}
+.relrow .rb{font-family:var(--mono);font-size:10px;color:#fff;padding:2px 7px;border-radius:20px;white-space:nowrap;
+  flex:none;min-width:68px;box-sizing:border-box;text-align:center}
+/* fixed slot, so a contain row does not push its name further right than a same row.
+   ⊇/⊆ are outside JetBrains Mono's coverage — keep them off the badge and out of its metrics. */
+.rdir{flex:none;width:11px;text-align:center;font-size:12px;line-height:1;color:var(--ink2);
+  font-family:var(--sans)}
+.relrow .rn{flex:1;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.relrow .rs{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.snode{transition:stroke-width .14s,fill-opacity .14s}
+.snodeg{transition:opacity .14s,transform .15s ease}
+/* the outer ring is revealed by zooming out; --outer is driven by the viewport scale */
+.snodeg.dim{opacity:.12}
+.snodeg.hot{transform:scale(1.2)}
+.snodeg.hot .snode{stroke-width:2.8px;fill-opacity:.36}
+.shalo{transition:opacity .14s}.snodeg.dim .shalo{opacity:.03}
+.sedge{transition:opacity .14s}
+.glbl{font-size:9.5px;fill:var(--ink2);font-family:var(--mono);pointer-events:none}.glbl.foc{font-size:11px;font-weight:700;fill:var(--ink)}
+.glbl.near{font-size:9px;fill:var(--muted);opacity:.85}
+.relsec>.relhead{cursor:pointer;user-select:none;transition:color .13s}
+.relsec>.relhead:hover{color:var(--ink2)}
+.relnone{font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--muted);opacity:.6;margin-top:14px}
+.localonly{max-width:660px;background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:24px 26px 22px;box-shadow:var(--shadow)}
+.localonly p{color:var(--ink2);line-height:1.65;margin:0 0 12px}
+.localonly ul{margin:0 0 14px;padding-left:20px;color:var(--ink2);line-height:1.65}
+.localonly li{margin-bottom:7px}
+.localonly .eyebrow{margin:22px 0 10px}
+.localcmd{font-family:var(--mono);font-size:12px;line-height:1.75;color:var(--ink2);background:var(--panel2);
+  border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:0;overflow-x:auto;white-space:pre}
+.localcmd .cmt{color:var(--muted)}
+.lofoot{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:18px}
+.lobrowse{font-family:var(--sans);font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer;
+  background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 16px;
+  white-space:nowrap;transition:color .15s,border-color .15s}
+.lobrowse:hover{color:var(--accent);border-color:var(--accent)}
+.relcar{font-size:9px;transition:transform .15s;display:inline-block;width:9px;text-align:center}
+.relsec.fold .relcar{transform:rotate(-90deg)}
+.relsec.fold .relrows{display:none}
+/* ---- add ---- */
+.addwrap{display:grid;grid-template-columns:minmax(340px,420px) minmax(0,1fr);gap:26px;align-items:start}
+@media(max-width:920px){.addwrap{grid-template-columns:1fr}}
+.addwrap>div{min-width:0}
+#a-res{min-width:0}
+.form{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:var(--shadow)}
+.form label{display:block;font-size:12.5px;font-weight:600;color:var(--ink2);margin:13px 0 5px}
+.form input,.form textarea,.form select{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 12px;color:var(--ink);font:inherit;font-size:13.5px}
+.form textarea{min-height:88px;resize:vertical;line-height:1.5}.form .hint{font-size:11.5px;color:var(--muted);margin-top:4px}
+.drop{border:1.5px dashed var(--line);border-radius:11px;padding:22px;text-align:center;color:var(--muted);cursor:pointer;transition:border-color .12s,background .12s;font-size:13px}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.orline{display:flex;align-items:center;gap:12px;margin:18px 0 12px;color:var(--muted);
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase}
+.orline::before,.orline::after{content:'';flex:1;height:1px;background:var(--line)}
+.form textarea.mdbox{width:100%;min-height:250px;resize:vertical;
+  font-family:var(--mono);font-size:12px;line-height:1.75;letter-spacing:-.01em;
+  white-space:pre-wrap;overflow-wrap:anywhere;tab-size:2;
+  background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:15px 17px;
+  color:var(--ink);outline:none;transition:border-color .15s,box-shadow .15s,background .15s}
+.form textarea.mdbox:focus{border-color:rgba(40,71,224,.35);background:var(--panel);box-shadow:0 0 0 3px var(--accent-soft)}
+.form textarea.mdbox::placeholder{color:var(--muted);opacity:.7}
+/* thin scrollbars, as on the landing page */
+*::-webkit-scrollbar{width:6px;height:6px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:rgba(0,0,0,.12);border-radius:3px}
+@media (prefers-color-scheme:dark){*::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14)}}
+.btn{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:11px 18px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;margin-top:16px;width:100%}
+.btn:disabled{opacity:.55;cursor:default}
+.btn.ghost{background:var(--panel);color:var(--accent);border:1px solid var(--line)}
+.pipe{display:flex;gap:0;margin-bottom:18px;font-family:var(--mono);font-size:11px}
+.pipe .st{flex:1;text-align:center;padding:8px 4px;border-bottom:2px solid var(--line);color:var(--muted);position:relative}
+.pipe .st.on{border-color:var(--accent);color:var(--accent)}.pipe .st.done{border-color:var(--inter);color:var(--inter)}
+.labelcard{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:16px 18px;margin-bottom:16px}
+.lrow{display:flex;gap:10px;margin:6px 0;font-size:13px;min-width:0}.lrow .lk{font-family:var(--mono);font-size:11px;color:var(--muted);width:82px;flex-shrink:0;text-transform:uppercase;letter-spacing:.04em;padding-top:2px}
+.lrow>div:last-child{min-width:0;overflow-wrap:anywhere;line-height:1.5}
+.labelcard{min-width:0}
+.sugg{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.suggc{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:13px 16px;flex:1;min-width:160px}
+.suggc .l{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}.suggc .v{font-size:17px;font-weight:700;margin-top:3px;font-family:var(--display)}
+.empty{color:var(--muted);text-align:center;padding:56px 20px;font-size:14px}
+.spin{width:22px;height:22px;border:2.5px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:middle}@keyframes sp{to{transform:rotate(360deg)}}
+.legend{display:flex;gap:15px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin:8px 0}.legend span{display:flex;align-items:center;gap:6px}
+/* ---- full-screen skill page ---- */
+#skillpage{position:fixed;inset:var(--hh) 0 0 0;z-index:70;background:var(--bg);display:none;flex-direction:column}
+#skillpage.on{display:flex}
+.sptop{display:flex;align-items:center;gap:11px;padding:14px 26px 12px;background:var(--panel);flex-wrap:wrap}
+.imtop{display:flex;align-items:flex-start;gap:12px}
+.imtop h2{margin:0 0 6px;font-size:19px;letter-spacing:-.025em}
+.imtags{display:flex;flex-wrap:wrap;gap:6px}
+.imsec{display:grid;grid-template-columns:96px 1fr;gap:14px;padding:11px 0;border-top:1px solid var(--line2);align-items:baseline}
+.imk{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.imv{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;color:var(--ink2)}
+.imwf{margin:0;padding-left:17px;display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--ink2)}
+.imwf li{border-radius:5px;padding:1px 6px;transition:background .12s,color .12s}
+.imwf li.shl{background:var(--accent);color:#fff}
+.imshare{font-family:var(--mono);font-size:10.5px;color:var(--accent);margin-top:8px}
+.imrel{font-family:var(--mono);font-size:10.5px;border:1px solid;border-radius:6px;padding:2px 7px}
+.imio{display:inline-flex;align-items:center;gap:5px;margin-right:12px}
+.imio b{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:400}
+.imfoot{display:flex;gap:12px;flex-wrap:wrap;align-items:center;border-top:1px solid var(--line);
+  padding:16px 22px 20px;margin-top:6px}
+.imsrc{display:inline-flex;align-items:center;gap:7px;text-decoration:none;font-family:var(--sans);
+  font-size:13.5px;font-weight:600;color:var(--ink2);background:var(--panel);border:1px solid var(--line);
+  border-radius:9px;padding:9px 16px;transition:color .15s,border-color .15s}
+.imsrc:hover{color:var(--accent);border-color:var(--accent)}
+.imfoot .btn{margin-left:auto}
+.sgrid{color:rgba(0,0,0,.022);pointer-events:none}
+:root[data-theme=dark] .sgrid{color:rgba(255,255,255,.032)}
+:root[data-theme=light] .sgrid{color:rgba(0,0,0,.022)}
+.spdepth{font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--muted);
+  border:1px solid var(--line);border-radius:6px;padding:2px 6px;flex:none}
+.spmark{width:32px;height:32px;border-radius:9px;border:1px solid;display:grid;place-items:center;flex:none}
+.spctl{display:flex;align-items:center;gap:22px;padding:0 26px 13px;background:var(--panel);
+  border-bottom:1px solid var(--line);flex-wrap:wrap}
+.splegend{display:flex;gap:14px;font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;color:var(--muted)}
+.splegend span{display:inline-flex;align-items:center;gap:6px}
+.splegend i{width:14px;height:2.5px;border-radius:2px;display:inline-block}
+@media(max-width:760px){.sptop,.spctl{padding-left:18px;padding-right:18px}}
+.spback{background:var(--panel);border:1px solid var(--line);border-radius:9px;width:30px;height:30px;
+  font:inherit;font-size:14px;cursor:pointer;color:var(--ink2);flex:none;transition:border-color .15s,color .15s}
+.spback:hover{border-color:var(--accent);color:var(--accent)}
+.spback:hover{border-color:var(--accent);color:var(--accent)}
+.sptitle{font-weight:800;font-size:19px;letter-spacing:-.025em;max-width:40ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--display)}
+.spslider{display:flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.spslider input[type=range]{accent-color:var(--accent);width:170px}
+.spbody{flex:1;display:grid;grid-template-columns:1fr 5px var(--sppw,400px);min-height:0}
+.spdrag{cursor:col-resize;background:var(--line);position:relative;transition:background .13s}
+.spdrag::after{content:'';position:absolute;inset:0 -4px}   /* a 13px grab target on a 5px rule */
+.spdrag:hover,.spdrag.on{background:var(--accent)}
+body.spresizing{cursor:col-resize;user-select:none}
+@media(max-width:900px){.spbody{grid-template-columns:1fr;grid-template-rows:1fr auto}.spdrag{display:none}}
+.spgraph{position:relative;min-height:0;overflow:hidden;background:radial-gradient(90% 85% at 50% 42%,var(--panel2),var(--bg))}
+.spgraph svg{width:100%;height:100%;display:block;cursor:grab}
+.spgcount{position:absolute;left:14px;bottom:12px;font-family:var(--mono);font-size:11px;color:var(--muted);pointer-events:none}
+.sppanel{border-left:1px solid var(--line);overflow:auto;padding:20px 22px;background:var(--panel)}
+@media(max-width:900px){.sppanel{border-left:0;border-top:1px solid var(--line);max-height:44vh}}
+.sphint{position:absolute;right:16px;bottom:14px;font-family:var(--mono);font-size:10px;letter-spacing:.04em;color:var(--muted);pointer-events:none;text-align:right}
+/* ---- complete-info modal ---- */
+#infomodal{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;background:rgba(8,10,16,.5);padding:22px;backdrop-filter:blur(3px)}
+#infomodal.on{display:flex}
+.imcard{background:var(--panel);border:1px solid var(--line);border-radius:16px;max-width:660px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);position:relative}
+.imhead{position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--line);padding:18px 22px 14px;z-index:1}
+.imhead h2{margin:0 42px 0 0;font-size:20px;letter-spacing:-.02em;font-family:var(--display);font-weight:800}
+.imhead .x{position:absolute;top:15px;right:18px;background:none;border:1px solid var(--line);border-radius:8px;width:30px;height:30px;cursor:pointer;color:var(--ink2);font-size:16px}
+.imbody{padding:14px 22px 24px}
+.imrow{display:flex;gap:12px;margin:9px 0;font-size:13.5px;align-items:flex-start}
+.imrow .k{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);width:92px;flex-shrink:0;padding-top:3px}
+.imrow .v{flex:1;display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+</style>
+<script>
+/* set before first paint so the page never flashes the wrong theme; dark unless asked otherwise */
+(function(){try{document.documentElement.setAttribute('data-theme',localStorage.getItem('sf-theme')||'dark');}
+catch(e){document.documentElement.setAttribute('data-theme','dark');}})();
+</script>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="brand" onclick="location.href='/'" title="Back to home">
+      <svg width="24" height="24" viewBox="0 0 38 38" fill="none">
+        <line x1="2" y1="19" x2="12" y2="19" stroke="#14B8A6" stroke-width="2.6" stroke-linecap="round"/>
+        <line x1="26" y1="19" x2="36" y2="19" stroke="#14B8A6" stroke-width="2.6" stroke-linecap="round"/>
+        <line x1="19" y1="2" x2="19" y2="36" stroke="#2847E0" stroke-width="2.6" stroke-linecap="round"/>
+        <circle cx="2" cy="19" r="3.4" fill="#E84040"/>
+        <circle cx="36" cy="19" r="3.4" fill="#8B5CF6"/>
+        <circle cx="19" cy="2" r="3.4" fill="#22C55E"/>
+        <circle cx="19" cy="36" r="3.4" fill="#F97316"/>
+        <circle cx="19" cy="19" r="5" fill="#2847E0"/>
+        <circle cx="17.6" cy="17.6" r="1.2" fill="rgba(255,255,255,0.45)"/>
+      </svg>
+      <span class="wm">Skill<b>Fabri</b></span>
+    </div>
+    <button class="navtgl" id="navtgl" aria-label="Menu" aria-expanded="false">
+      <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+        <path d="M3 5.5h14M3 10h14M3 14.5h14"/></svg></button>
+    <nav id="nav">
+      <button data-v="browse" class="on">Browse</button>
+      <button data-v="graph">Graph</button>
+      <button data-v="add">Add My Skill</button>
+      <button data-v="mine">My Skills</button>
+    </nav>
+    <button class="themetgl" id="theme" title="Light / dark">☾</button>
+    <span class="who" id="who"></span>
+  </div>
+</header>
+<main>
+  <section class="view pad" id="v-browse"></section>
+  <section class="view pad" id="v-add"></section>
+  <section class="view pad" id="v-mine"></section>
+</main>
+<div class="dscrim" id="scrim"></div>
+<aside class="drawer" id="drawer"></aside>
+<div id="skillpage"></div>
+<div id="signin" onclick="if(event.target.id==='signin')closeSignIn()">
+  <div class="imcard" style="max-width:400px">
+    <div class="imhead" style="display:flex;align-items:center;gap:10px">
+      <span class="sptitle">Sign in</span>
+      <button class="spback" onclick="closeSignIn()" style="margin-left:auto">✕</button></div>
+    <div class="imbody" style="text-align:center;padding-top:4px">
+      <p class="lede" id="signinwhy" style="margin:0 0 20px"></p>
+      <div class="prov">
+      <div id="gbtn"></div>
+      <div id="ghwrap">
+        <a class="ghbtn" href="/auth/github/start">
+          <svg viewBox="0 0 16 16" width="17" height="17" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.42 7.42 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+          Continue with GitHub</a>
+      </div></div>
+      <p class="hint" style="margin-top:18px">Name, email and avatar only.</p>
+    </div>
+  </div>
+</div>
+<div id="infomodal" onclick="if(event.target.id==='infomodal')closeInfo()"></div>
+<script src="/icons.js"></script>
+<script>
+const API=p=>fetch(p).then(r=>r.json());
+const POST=(p,b)=>fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json());
+const REL={same:'--same',intersect:'--inter',contain:'--contain'};
+const RELE={same:'--esame',intersect:'--einter',contain:'--econtain'};   // edge-only, softer
+const cssv=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt=n=>n>=1000?(n/1000).toFixed(n>=10000?0:1)+'k':(''+(n||0));
+const esc=s=>(''+(s==null?'':s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ACTCOL=window.SF_ACTCOL||{};   /* defined in /icons.js, shared with the landing page */
+const actCol=a=>ACTCOL[a]||'#8a8f9c';
+/* Every edge stays inside one activity, so an activity-coloured neighbourhood is a single flat
+   colour. Capability is the axis that actually varies inside it. */
+const CAPHUE=['#14B8A6','#2847E0','#22C55E','#E8590C','#8B5CF6','#EC4899','#F59E0B','#0EA5C4','#D6455D','#7048E8'];
+function capPalette(nodes){const caps=[...new Set(nodes.map(n=>n.capability).filter(Boolean))].sort();
+  const m={};caps.forEach((c,i)=>m[c]=CAPHUE[i%CAPHUE.length]);
+  return n=>m[n.capability]||actCol(n.activity);}
+/* one icon set for the whole product — /icons.js is shared with the landing page */
+function actIcon(a,size){const d=(window.SF_ICONS||{})[a]||window.SF_ICON_FALLBACK||'';
+  return d?`<svg viewBox="0 0 20 20" fill="none" width="${size||15}" height="${size||15}" style="flex:none">${d}</svg>`:'';}
+let DIMS=null,FAVS=new Set(),ME=null;
+// Browsing needs no account. Saving does, because a favourite has to belong to somebody —
+// before this it belonged to the server, which meant every visitor shared one list.
+async function loadMe(){try{ME=await API('/api/me');}catch(e){ME={user:null,login:false};}return ME;}
+function signedIn(){return !!(ME&&ME.user);}
+function askSignIn(why){
+  if(ME&&!ME.login){alert('Sign-in is not configured on this instance.');return;}
+  const d=document.getElementById('signin');if(!d)return;
+  document.getElementById('signinwhy').textContent=why||'Sign in to keep your own list.';
+  const P=(ME&&ME.providers)||{};
+  document.getElementById('ghwrap').style.display=P.github?'block':'none';
+  document.getElementById('gbtn').style.display=P.google?'flex':'none';
+  d.classList.add('on');if(P.google)mountGoogle();}
+function closeSignIn(){const d=document.getElementById('signin');if(d)d.classList.remove('on');}
+// Google's script is only fetched once somebody actually tries to sign in, so a visitor who
+// never does is not billed a third-party request.
+let _gsi=null;
+function mountGoogle(){
+  const host=document.getElementById('gbtn');if(!host||!ME||!ME.client_id)return;
+  const draw=()=>{if(!window.google||!google.accounts)return;
+    google.accounts.id.initialize({client_id:ME.client_id,callback:async r=>{
+      const res=await POST('/api/auth/google',{credential:r.credential});
+      if(res&&res.ok){ME.user=res.user;closeSignIn();await refreshFavs();
+        paintMe();if(viewOn('mine'))renderMine();}
+      else alert('Sign-in failed.');}});
+    host.innerHTML='';
+    google.accounts.id.renderButton(host,{theme:document.documentElement.getAttribute('data-theme')==='dark'?'filled_black':'outline',
+      size:'large',shape:'pill',text:'continue_with',width:280});
+    // GIS renders nothing at all when the page's origin is not on the client's allowed list,
+    // and reports it only to the console — so an unconfigured origin looks like a blank gap.
+    // Say what happened instead of leaving the space empty.
+    setTimeout(()=>{if(host && !host.firstChild)
+      host.innerHTML='<span class="hint" style="line-height:1.5">Google sign-in did not load — '+
+        'this page\'s origin may not be registered for the client id.</span>';},2500);};
+  if(_gsi){draw();return;}
+  _gsi=document.createElement('script');_gsi.src='https://accounts.google.com/gsi/client';
+  _gsi.async=true;_gsi.defer=true;_gsi.onload=draw;
+  _gsi.onerror=()=>{_gsi=null;host.innerHTML='<span class="hint">Google sign-in could not be '+
+    'reached. Continue with GitHub, or try again.</span>';};
+  document.head.appendChild(_gsi);}
+async function signOut(){await POST('/api/auth/logout',{});ME.user=null;FAVS=new Set();
+  paintMe();if(viewOn('mine'))renderMine();if(viewOn('browse'))loadList();}
+function viewOn(v){const e=document.getElementById('v-'+v);return !!e&&e.classList.contains('on');}
+function paintMe(){
+  const w=document.getElementById('who');if(!w)return;
+  if(signedIn()){const u=ME.user;
+    w.innerHTML=`<button class="whobtn" id="whobtn" title="${esc(u.email||'')}">`+
+      (u.picture?`<img src="${esc(u.picture)}" alt="">`:`<span class="whoin">${esc((u.name||'?')[0])}</span>`)+
+      `</button><button class="whoout" id="whoout">Sign out</button>`;
+    document.getElementById('whoout').onclick=signOut;}
+  else w.innerHTML=`<button class="whobtn signin" id="whoin">Sign in</button>`,
+       (document.getElementById('whoin').onclick=()=>askSignIn());}
+async function refreshFavs(){
+  if(!signedIn()){FAVS=new Set();return;}
+  try{const m=await API('/api/mine');FAVS=new Set((m.favorites||[]).map(s=>s.id));}catch(e){FAVS=new Set();}}
+
+function show(v){
+  if(v!=='graph'){const sp=document.getElementById('skillpage');if(sp)sp.classList.remove('on');}
+  document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  if(v==='browse'&&!R.browse){renderBrowse();R.browse=1;}
+  if(v==='add'&&!R.add){renderAdd();R.add=1;}
+  if(v==='mine'){renderMine();}
+  if(v==='graph'){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==='graph'));
+    API('/api/list?sort=shared').then(d=>{const t=(d.items||[])[0];if(t)openSkill(t.id);});}}
+const R={};
+/* the landing page routes by hash: #graph #graph=<id> #browse #browse=<activity> #add #mine #dups #q=… */
+function applyHash(){
+  if((location.hash||'')==='#signin'){show('mine');
+    setTimeout(()=>{if(!signedIn())askSignIn('Sign in to keep your own list.');},80);return true;}
+  const h=decodeURIComponent((location.hash||'').replace(/^#/,''));
+  if(!h) return false;
+  const toBrowse=st=>{show('browse');const go=()=>{BR=Object.assign({dim:'pop',val:null,page:0,q:'',vq:'',sort:'pop',has:''},st);loadList();};
+    if(!R.browse){renderBrowse().then(()=>{R.browse=1;go();});}else go();};
+  if(h.startsWith('q=')){const q=h.slice(2);const b=document.getElementById('q');if(b)b.value=q;toBrowse({q});return true;}
+  if(h==='dups'){toBrowse({sort:'dups',has:'dups'});return true;}
+  if(h.startsWith('browse=')){const v=h.slice(7);show('browse');
+    const go=()=>selectDim('activity',v);
+    if(!R.browse){renderBrowse().then(()=>{R.browse=1;go();});}else go();return true;}
+  if(h==='graph'||h.startsWith('graph=')){
+    const want=h.startsWith('graph=')?parseInt(h.slice(6),10):NaN;
+    if(!isNaN(want))openSkill(want);
+    else API('/api/list?sort=shared').then(d=>{const t=(d.items||[])[0];if(t)openSkill(t.id);});
+    return true;}
+  if(['add','mine','browse'].includes(h)){show(h);return true;}
+  return false;}
+addEventListener('hashchange',applyHash);
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{show(b.dataset.v);closeNav();});
+window.closeNav=()=>{};                 // defined for real below; the nav buttons call it either way
+(function(){const t=document.getElementById('navtgl'),nv=document.getElementById('nav');
+  if(!t||!nv)return;
+  window.closeNav=()=>{nv.classList.remove('open');t.setAttribute('aria-expanded','false');};
+  t.onclick=e=>{e.stopPropagation();const on=!nv.classList.contains('open');
+    nv.classList.toggle('open',on);t.setAttribute('aria-expanded',String(on));};
+  document.addEventListener('click',e=>{if(!nv.contains(e.target)&&e.target!==t)closeNav();});
+  addEventListener('keydown',e=>{if(e.key==='Escape')closeNav();});})();
+// the choice is shared with the landing page and survives a reload
+(function(){const r=document.documentElement,btn=document.getElementById('theme');
+  const cur=()=>r.getAttribute('data-theme')||'dark';
+  const paint=()=>{if(btn)btn.textContent=cur()==='dark'?'☾':'☀';};
+  paint();   // <head> already applied the stored choice before first paint
+  if(btn)btn.onclick=()=>{const t=cur()==='dark'?'light':'dark';
+    r.setAttribute('data-theme',t);try{localStorage.setItem('sf-theme',t);}catch(e){}
+    paint();
+    if(SP.id>=0)loadSPGraph(true);            // the graph bakes colours in at draw time
+    if(R.browse)loadList();};})();
+
+/* ===== force layout (synchronous settle) ===== */
+function layout(nodes,edges,W,H,iters,center){const idx={};nodes.forEach(n=>idx[n.id]=n);
+  // Seeding on a golden-angle spiral and stopping there is what made the neighbourhood look
+  // mechanical — every node on a perfect arc. The spiral is still the seed (it keeps `same` and
+  // `contain` nearest the centre), but it is jittered and then relaxed, so the result settles the
+  // way the landing-page graph looks: even, but not laid out on rails.
+  const rnd=s=>{const x=Math.sin(s*127.1+11.7)*43758.5453;return x-Math.floor(x);};   // stable per id
+  const P={},ids=nodes.map(n=>n.id);
+  const cx=W/2,cy=H/2,pinned=(center!=null&&idx[center]!=null)?center:null;
+  if(pinned!=null){
+    const prio={same:0,contain:1,intersect:2,near:3},best={};
+    edges.forEach(e=>{const j=e.a===center?e.b:(e.b===center?e.a:null);if(j==null)return;
+      const p=prio[e.type]!=null?prio[e.type]:4;if(best[j]==null||p<best[j])best[j]=p;});
+    const ord=nodes.map((n,i)=>({n,i})).filter(o=>o.n.id!==center)
+      .sort((a,b)=>{const pa=best[a.n.id]!=null?best[a.n.id]:5,pb=best[b.n.id]!=null?best[b.n.id]:5;
+        return pa-pb||a.i-b.i;});
+    const GA=Math.PI*(3-Math.sqrt(5)),m=ord.length,Rx=W*0.42,Ry=H*0.42;
+    P[center]=[cx,cy];
+    ord.forEach((o,r)=>{const t=Math.sqrt((r+1)/(m+1)),a=r*GA+ (rnd(o.n.id)-0.5)*0.9;
+      const rr=t*(0.78+rnd(o.n.id*3.1)*0.44);
+      P[o.n.id]=[cx+Rx*rr*Math.cos(a),cy+Ry*rr*Math.sin(a)];});
+  } else {
+    nodes.forEach((n,i)=>{const a=2*Math.PI*i/nodes.length+(rnd(n.id)-0.5)*0.7;
+      const rr=0.3*(0.8+rnd(n.id*5.7)*0.4);
+      P[n.id]=[cx+Math.cos(a)*W*rr,cy+Math.sin(a)*H*rr];});
+  }
+  // Repulsion scaled to the canvas pushed everything onto the walls, and a rectangular clamp then
+  // lined them up along the edges — that is where the box came from. Spacing is capped, the disc is
+  // held by an elliptical clamp, and each node remembers the radius it was seeded at.
+  const k=Math.max(26,Math.min(78,Math.sqrt(W*H/Math.max(1,nodes.length))*0.5))*(nodes.length>140?1.5:1);
+  const Ex=W*0.45,Ey=H*0.45,seedR={};
+  ids.forEach(i=>{seedR[i]=Math.hypot((P[i][0]-cx)/Ex,(P[i][1]-cy)/Ey);});
+  const IT=pinned!=null?Math.max(70,Math.min(iters,nodes.length>200?90:150)):iters;
+  for(let it=0;it<IT;it++){const dsp={};ids.forEach(i=>dsp[i]=[0,0]);
+    for(let x=0;x<ids.length;x++)for(let y=x+1;y<ids.length;y++){
+      const a=ids[x],b=ids[y];let dx=P[a][0]-P[b][0],dy=P[a][1]-P[b][1];
+      const d=Math.hypot(dx,dy)||.1,rp=k*k/d;dx/=d;dy/=d;
+      dsp[a][0]+=dx*rp;dsp[a][1]+=dy*rp;dsp[b][0]-=dx*rp;dsp[b][1]-=dy*rp;}
+    edges.forEach(e=>{const a=e.a,b=e.b;if(!P[a]||!P[b])return;
+      let dx=P[a][0]-P[b][0],dy=P[a][1]-P[b][1];const d=Math.hypot(dx,dy)||.1,at=d*d/k*0.02;dx/=d;dy/=d;
+      dsp[a][0]-=dx*at;dsp[a][1]-=dy*at;dsp[b][0]+=dx*at;dsp[b][1]+=dy*at;});
+    const cool=Math.max(.04,1-it/(IT*.8));
+    ids.forEach(i=>{
+      if(i==pinned){P[i][0]=cx;P[i][1]=cy;return;}          // the subject stays put
+      const mx=dsp[i][0],my=dsp[i][1],dl=Math.hypot(mx,my)||.1,lim=Math.min(dl,18)*cool;
+      P[i][0]+=mx/dl*lim;P[i][1]+=my/dl*lim;
+      // ease back toward the ring it started on, so the cloud keeps its depth instead of flattening
+      let ux=(P[i][0]-cx)/Ex,uy=(P[i][1]-cy)/Ey,r=Math.hypot(ux,uy)||1e-6;
+      const want=r+(seedR[i]-r)*0.06;
+      ux=ux/r*want;uy=uy/r*want;
+      if(want>1){ux/=want;uy/=want;}                        // an elliptical wall, never a square one
+      P[i][0]=cx+ux*Ex;P[i][1]=cy+uy*Ey;});}
+  nodes.forEach(n=>{n.x=P[n.id][0];n.y=P[n.id][1];});return nodes;}
+function drawForce(host,nodes,edges,opts){opts=opts||{};const W=opts.W||900,H=opts.H||460,NS='http://www.w3.org/2000/svg';
+  if(!nodes.length){host.innerHTML='<div class="empty">No neighbours here.</div>';return;}
+  layout(nodes,edges,W,H,opts.iters||220,opts.center);const idx={};nodes.forEach(n=>idx[n.id]=n);
+  const maxp=Math.max(1,...nodes.map(n=>n.pop||0));
+  // A layout tuned for forty nodes falls apart at four hundred. Sizes, spacing and line weight all
+  // scale with the crowd so the graph degrades gracefully instead of turning into a mat.
+  const DENS=Math.max(0.34,Math.min(1,Math.sqrt(70/Math.max(1,nodes.length))));
+  const rOf=n=>n.id===opts.center?Math.max(9,13*DENS+3):Math.max(2.6,DENS*(opts.sizeByPop?5+Math.sqrt(n.pop||0)/Math.sqrt(maxp)*9:5+Math.min(8,(n.deg||1))));
+  nodes.forEach(n=>n.deg=0);edges.forEach(e=>{if(idx[e.a])idx[e.a].deg++;if(idx[e.b])idx[e.b].deg++;});
+  const svg=document.createElementNS(NS,'svg');svg.setAttribute('viewBox',`0 0 ${W} ${H}`);svg.setAttribute('preserveAspectRatio','xMidYMid meet');
+  const uid='g'+Math.random().toString(36).slice(2,7);
+  const defs=document.createElementNS(NS,'defs');
+  const AR=(9.5*Math.max(0.62,DENS)).toFixed(1);   // `contain` is directed; it needs a head, not just a colour
+  defs.innerHTML=`<pattern id="pg-${uid}" width="34" height="34" patternUnits="userSpaceOnUse">`+
+    `<circle cx="0.6" cy="0.6" r="0.6" fill="currentColor"/></pattern>`+
+    `<marker id="ar-${uid}" viewBox="0 0 10 10" refX="9.1" refY="5" orient="auto" markerUnits="userSpaceOnUse" `+
+      `markerWidth="${AR}" markerHeight="${AR}">`+
+      `<path d="M0.6,0.9 L9.3,5 L0.6,9.1 L2.7,5 Z" fill="${cssv('--econtain')}"/></marker>`;
+  svg.appendChild(defs);
+  const g=document.createElementNS(NS,'g');svg.appendChild(g);
+  const grid=document.createElementNS(NS,'rect');
+  grid.setAttribute('x',-W);grid.setAttribute('y',-H);grid.setAttribute('width',W*3);grid.setAttribute('height',H*3);
+  grid.setAttribute('fill',`url(#pg-${uid})`);grid.setAttribute('class','sgrid');g.appendChild(grid);
+  let focus=opts.center!=null?opts.center:-1,DRAG=null;
+  const VP={k:1,x:0,y:0};function applyVP(){g.setAttribute('transform',`translate(${VP.x} ${VP.y}) scale(${VP.k})`);}
+  // the wider the view, the more of the outer ring is revealed — zoom is the density control
+  // open framed on the centre's immediate neighbourhood — the whole cloud is still there,
+  // one scroll away, but the first thing on screen is the part that is legible
+  function frameCentre(){
+    const c=opts.center!=null?idx[opts.center]:null;if(!c)return;
+    const near=nodes.filter(n=>adj[opts.center]&&adj[opts.center].has(n.id));
+    let rad=90;near.forEach(n=>{rad=Math.max(rad,Math.hypot(n.x-c.x,n.y-c.y)+rOf(n));});
+    rad=Math.min(rad*1.05,Math.min(W,H)*0.5);
+    // 16% of skills have no relation at all. For those `near` is just the centre, rad stays at the
+    // floor, and the zoom formula answers with its maximum — one circle filling the pane. Fewer
+    // nodes must never mean more zoom, so the cap follows the size of the crowd.
+    const maxK=nodes.length<=1?1:nodes.length<=4?1.5:nodes.length<=12?2.3:4.5;
+    VP.k=Math.min(maxK,Math.max(1.25,Math.min(4.5,Math.min(W,H)/(rad*1.7))));
+    VP.x=W/2-c.x*VP.k;VP.y=H/2-c.y*VP.k;applyVP();}
+  function svgPt(ev){const r=svg.getBoundingClientRect(),vb=svg.viewBox.baseVal;const sc=Math.min(r.width/vb.width,r.height/vb.height);
+    return {x:(ev.clientX-r.left-(r.width-vb.width*sc)/2)/sc,y:(ev.clientY-r.top-(r.height-vb.height*sc)/2)/sc};}
+  if(opts.zoom!==false){
+    svg.addEventListener('wheel',ev=>{ev.preventDefault();const p=svgPt(ev);const f=ev.deltaY<0?1.12:1/1.12;const nk=Math.max(0.35,Math.min(6,VP.k*f));
+      VP.x=p.x-(p.x-VP.x)*(nk/VP.k);VP.y=p.y-(p.y-VP.y)*(nk/VP.k);VP.k=nk;applyVP();},{passive:false});
+    let drag=null;svg.addEventListener('pointerdown',ev=>{if(ev.target.classList.contains('snode'))return;drag={x:ev.clientX,y:ev.clientY,vx:VP.x,vy:VP.y};svg.style.cursor='grabbing';svg.setPointerCapture(ev.pointerId);});
+    svg.addEventListener('pointermove',ev=>{if(!drag)return;const r=svg.getBoundingClientRect(),vb=svg.viewBox.baseVal,sc=Math.min(r.width/vb.width,r.height/vb.height);
+      VP.x=drag.vx+(ev.clientX-drag.x)/sc;VP.y=drag.vy+(ev.clientY-drag.y)/sc;applyVP();});
+    const end=()=>{drag=null;svg.style.cursor='grab';};svg.addEventListener('pointerup',end);svg.addEventListener('pointerleave',end);
+  }
+  const adj={};nodes.forEach(n=>adj[n.id]=new Set([n.id]));edges.forEach(e=>{if(adj[e.a]&&adj[e.b]){adj[e.a].add(e.b);adj[e.b].add(e.a);}});
+  const eG=document.createElementNS(NS,'g'),nG=document.createElementNS(NS,'g'),lG=document.createElementNS(NS,'g');g.append(eG,nG,lG);
+  const lineEls=[];
+  const EW={same:2.5,contain:2.3,intersect:2.0,near:1.1};
+  edges.forEach(e=>{
+    // orient `contain` broader -> narrower so the head always lands on the contained skill
+    let ea=e.a,eb=e.b;
+    const dirOK=e.type==='contain'&&(e.dir===1||e.dir===-1);
+    if(dirOK&&e.dir===-1){ea=e.b;eb=e.a;}
+    const A=idx[ea],B=idx[eb];if(!A||!B)return;
+    const l=document.createElementNS(NS,'line');
+    const isNear=e.type==='near';
+    l.setAttribute('stroke',isNear?'var(--muted)':(opts.colorEdge?cssv(RELE[e.type]||'--line'):'var(--line)'));
+    l.setAttribute('stroke-width',((EW[e.type]||2.0)*Math.max(0.55,DENS)).toFixed(2));
+    l.setAttribute('stroke-linecap','round');
+    const simBase=isNear?Math.max(0.07,Math.min(0.52,(((e.sim||0.7)-0.7)/0.3)*0.45+0.07)):null;
+    if(isNear){l.setAttribute('stroke-dasharray','4 4');l.setAttribute('stroke-opacity',(simBase||0.2).toFixed(2));}
+    if(dirOK)l.setAttribute('marker-end',`url(#ar-${uid})`);   // no arrow beats a wrong arrow
+    l.setAttribute('vector-effect','non-scaling-stroke');l.setAttribute('class','sedge');eG.appendChild(l);
+    lineEls.push({el:l,a:ea,b:eb,type:e.type,dir:dirOK,near:isNear,base:isNear?simBase:(opts.colorEdge?0.62:0.45)});});
+  // Nodes are drawn the way the landing-page graph draws them — a soft halo, a translucent body
+  // with a solid rim — and each is a group, so it can scale on hover and be dragged.
+  // who a node's closest neighbours are, so a hover can name them without a second pass
+  const simAdj={};
+  edges.forEach(e=>{const a=idx[e.a],b=idx[e.b];if(!a||!b)return;const w=e.sim||0;
+    (simAdj[e.a]=simAdj[e.a]||[]).push({id:e.b,sim:w});
+    (simAdj[e.b]=simAdj[e.b]||[]).push({id:e.a,sim:w});});
+  for(const k in simAdj)simAdj[k].sort((x,y)=>y.sim-x.sim);
+  // how loud a node reads is a property of the theme: the same alpha that is subtle on paper glares on black
+  const NFILL=cssv('--nfill')||'0.24',NFILLC=cssv('--nfillc')||'0.40',
+        NHALO=cssv('--nhalo')||'0.12',NSTROKE=cssv('--nstroke')||'1';
+  const circEls={},groupEls={};
+  nodes.forEach(n=>{
+    const col=opts.colorNode?opts.colorNode(n):actCol(n.activity),R=rOf(n);
+    const g=document.createElementNS(NS,'g');g.setAttribute('class','snodeg');
+    const halo=document.createElementNS(NS,'circle');
+    halo.setAttribute('cx',n.x);halo.setAttribute('cy',n.y);halo.setAttribute('r',R+8*DENS);
+    halo.setAttribute('fill',col);halo.setAttribute('opacity',NHALO);halo.setAttribute('class','shalo');
+    const m=document.createElementNS(NS,'circle');
+    m.setAttribute('cx',n.x);m.setAttribute('cy',n.y);m.setAttribute('r',R);m.setAttribute('fill','var(--panel2)');
+    const c=document.createElementNS(NS,'circle');
+    c.setAttribute('cx',n.x);c.setAttribute('cy',n.y);c.setAttribute('r',R);
+    c.setAttribute('fill',col);c.setAttribute('fill-opacity',n.id===opts.center?NFILLC:NFILL);
+    c.setAttribute('stroke',col);c.setAttribute('stroke-opacity',NSTROKE);
+    c.setAttribute('stroke-width',(n.id===opts.center?2.8:1.9)*Math.max(0.6,DENS));
+    c.setAttribute('class','snode');
+    const ttl=document.createElementNS(NS,'title');
+    ttl.textContent=(n.name||'')+(n.capability?' · '+n.capability:'');
+    g.append(halo,m,c,ttl);nG.appendChild(g);
+    circEls[n.id]=c;groupEls[n.id]=g;
+    g.addEventListener('mouseenter',()=>{if(DRAG)return;hi(n.id);opts.onHover&&opts.onHover(n);});
+    g.addEventListener('mouseleave',()=>{if(DRAG)return;hi(opts.center!=null?opts.center:-1);opts.onHover&&opts.onHover(null);});
+    g.addEventListener('click',ev=>{ev.stopPropagation();if(g._moved)return;opts.onClick&&opts.onClick(n);});
+    g.addEventListener('pointerdown',ev=>{ev.stopPropagation();ev.preventDefault();
+      const p=svgPt(ev);DRAG={n,ox:n.x-(p.x-VP.x)/VP.k,oy:n.y-(p.y-VP.y)/VP.k};
+      g._moved=false;g.setPointerCapture(ev.pointerId);g.style.cursor='grabbing';});
+    g.addEventListener('pointermove',ev=>{
+      if(!DRAG||DRAG.n!==n)return;
+      const p=svgPt(ev);n.x=(p.x-VP.x)/VP.k+DRAG.ox;n.y=(p.y-VP.y)/VP.k+DRAG.oy;g._moved=true;
+      [halo,m,c].forEach(e=>{e.setAttribute('cx',n.x);e.setAttribute('cy',n.y);});
+      g.style.transformOrigin=n.x+'px '+n.y+'px';redrawEdges(n.id);
+      hi(focus);});   // labels are placed from node coords, so they have to follow the drag
+    ['pointerup','pointercancel'].forEach(t=>g.addEventListener(t,()=>{
+      if(DRAG&&DRAG.n===n){DRAG=null;g.style.cursor='grab';setTimeout(()=>{g._moved=false;},0);}}));
+    g.style.cursor='grab';g.style.transformOrigin=n.x+'px '+n.y+'px';
+  });
+  function trim(L){
+    const A=idx[L.a],B=idx[L.b];if(!A||!B)return;
+    const dx=B.x-A.x,dy=B.y-A.y,d=Math.hypot(dx,dy)||1,ra=rOf(A)+1.5;
+    const rb=rOf(B)+1.5+(L.dir?+AR*0.72:0);   // clear the arrowhead
+    L.el.setAttribute('x1',(A.x+dx/d*ra).toFixed(1));L.el.setAttribute('y1',(A.y+dy/d*ra).toFixed(1));
+    L.el.setAttribute('x2',(B.x-dx/d*rb).toFixed(1));L.el.setAttribute('y2',(B.y-dy/d*rb).toFixed(1));}
+  function redrawEdges(id){lineEls.forEach(L=>{if(L.a===id||L.b===id)trim(L);});}
+  lineEls.forEach(L=>trim(L));      // center-to-center until something was dragged; the arrow needs the rim
+  function hi(f){focus=f;
+    lineEls.forEach(L=>{L.el.setAttribute('opacity',(f<0||L.a===f||L.b===f?L.base||0.65:0.07).toFixed(2));});
+    for(const id in groupEls){groupEls[id].classList.toggle('dim',f>=0&&!adj[f].has(+id));
+      groupEls[id].classList.toggle('hot',f>=0&&+id===f);}
+    // Naming a fixed set leaves the same words on screen forever. The labels belong to the
+    // cursor: whatever is under it is named in full, and its nearest neighbours get a quieter
+    // one, so moving across the graph reads out the neighbourhood as you go.
+    lG.textContent='';
+    const foc=new Set();if(opts.center!=null&&opts.center>=-1)foc.add(opts.center);if(f>=0)foc.add(f);
+    const put=(id,strong)=>{const n=idx[id];if(!n)return;
+      const t=document.createElementNS(NS,'text');t.setAttribute('x',n.x);t.setAttribute('y',n.y-rOf(n)-5);
+      t.setAttribute('text-anchor','middle');t.setAttribute('class',strong?'glbl foc':'glbl near');
+      t.textContent=(n.name||'').slice(0,strong?28:22);lG.appendChild(t);};
+    if(f>=0)(simAdj[f]||[]).slice(0,opts.labelNear||5).forEach(o=>{if(!foc.has(o.id))put(o.id,false);});
+    foc.forEach(id=>put(id,true));}
+  const rest=opts.center!=null?opts.center:-1;host.innerHTML='';host.appendChild(svg);
+  hi(rest);
+  // the relation list highlights its node in the graph on hover
+  window._hlNode=id=>hi(id>=0&&idx[id]?id:rest);
+  if(opts.animate===false||matchMedia('(prefers-reduced-motion: reduce)').matches){return svg;}
+  eG.style.opacity='0';
+  const dur=opts.dur||280,t0=performance.now();
+  const from={};nodes.forEach(n=>{from[n.id]=[(W/2-n.x)*0.88,(H/2-n.y)*0.88];});
+  requestAnimationFrame(function step(t){const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);
+    for(const nd of nodes){const gg=groupEls[nd.id];if(!gg)continue;
+      const dx=from[nd.id][0]*(1-e),dy=from[nd.id][1]*(1-e);
+      gg.style.transform=dx||dy?`translate(${dx.toFixed(1)}px,${dy.toFixed(1)}px)`:'';}
+    if(p<1)requestAnimationFrame(step);
+    else{nodes.forEach(nd=>{const gg=groupEls[nd.id];if(gg)gg.style.transform='';});
+      eG.style.transition='opacity .26s ease';eG.style.opacity='1';
+      if(opts.frame!==false)frameCentre();}});
+  return svg;}
+
+/* ===== cards ===== */
+function favBtn(id){const on=FAVS.has(id);return `<button class="favb ${on?'on':''}" data-fav="${id}" title="Save to My Skills">${on?'♥':'♡'}</button>`;}
+function cardHTML(s){return `<div class="card" data-id="${s.id}"><div class="top"><span class="nm">${esc(s.name)}</span>`+
+    (s.author?`<span class="by" style="font-family:var(--mono);font-size:10.5px;color:var(--muted)">${esc(s.author)}</span>`:'')+
+  (s.pop?`<span class="pop" title="${esc(popLabel(s))}">${popIcon(s)} <b>${fmt(s.pop)}</b></span>`:'')+favBtn(s.id)+`</div><div class="sum">${esc(s.summary||'')}</div>`+
+  `<div class="meta"><span class="tag act" style="background:${actCol(s.activity)}">${esc(s.activity)}</span><span class="tag cap">${esc(s.capability)}</span>`+
+  (s.tech||[]).slice(0,2).map(t=>`<span class="tag">${esc(t)}</span>`).join('')+relBadges(s)+
+  (s.updated?`<span class="relb" title="last updated">⟳ ${esc(s.updated.slice(0,7))}</span>`:'')+`</div></div>`;}
+// the popularity number is not one quantity: clawhub reports a skill's own installs, the rest report
+// the star count of the whole repository. Say which, rather than printing a bare number.
+function popIcon(s){return s.pop_src==='clawhub_downloads'?'⤓':'★';}
+function popLabel(s){return s.pop_src==='clawhub_downloads'?'installs of this skill (ClawHub)':'stars of the repository this skill lives in';}
+function relBadges(s){const r=s.rel||{};let h='';
+  if(r.same)h+=`<span class="relb dup" title="near-duplicates of this skill">≡ ${r.same}</span>`;
+  if(r.intersect)h+=`<span class="relb" title="skills sharing ≥2 workflow operations">⊓ ${r.intersect}</span>`;
+  if(r.contain)h+=`<span class="relb" title="strict superset / subset relations">⊑ ${r.contain}</span>`;
+  return h;}
+function wireCards(root){root.querySelectorAll('.card').forEach(c=>{c.onclick=e=>{if(e.target.closest('.favb'))return;openSkill(+c.dataset.id);};});
+  root.querySelectorAll('.favb').forEach(b=>b.onclick=async e=>{e.stopPropagation();
+    const id=+b.dataset.fav;const r=await POST('/api/fav',{id});
+    if(!r||r.error){askSignIn('Sign in to save this skill.');return;}
+    if(r.on)FAVS.add(id);else FAVS.delete(id);b.classList.toggle('on',r.on);b.textContent=r.on?'♥':'♡';});}
+
+/* ===== full-screen skill page (interactive neighbourhood graph + sim slider) ===== */
+let SP={id:-1,minsim:0.78},SPHIST=[];
+async function openSkill(id,fromHistory){
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==='graph'));
+  if(!fromHistory&&SP.id>=0&&SP.id!==id)SPHIST.push(SP.id);SP={id,minsim:0.78};const s=await API('/api/skill?id='+id);renderSkillPage(s);}
+function originHTML(s){
+  if(!s||(!s.author&&!s.repo))return '';
+  const who=s.author?`<span class="by">${esc(s.author)}</span>`:'';
+  const where=s.repo?(s.repo_url?`<a href="${esc(s.repo_url)}" target="_blank" rel="noopener">${esc(s.repo)}</a>`:esc(s.repo)):'';
+  return `<div class="origin">${who}${who&&where?'<span>·</span>':''}${where}`+
+         (s.url?`<span>·</span><a class="osrc" href="${esc(s.url)}" target="_blank" rel="noopener">source ↗</a>`:'')+`</div>`;}
+function renderSkillPage(s){const el=document.getElementById('skillpage');const on=FAVS.has(s.id);SP.data=s;
+  el.innerHTML=
+    // one identity row — the skill and where it sits; the controls get their own line
+    `<div class="sptop">`+
+      `<button class="spback" onclick="closeSkill()">←</button>`+
+      (SPHIST.length?`<span class="spdepth">${SPHIST.length} back</span>`:'')+
+      `<span class="spmark" style="background:${actCol(s.activity)}1e;border-color:${actCol(s.activity)}33;color:${actCol(s.activity)}">`+
+        `<svg viewBox="0 0 20 20" fill="none" width="17" height="17">${(window.SF_ICONS||{})[s.activity]||window.SF_ICON_FALLBACK||''}</svg></span>`+
+      `<span class="sptitle">${esc(s.name)}</span>`+
+      `<span class="tag act" style="background:${actCol(s.activity)}">${esc(s.activity)}</span>`+
+      `<span class="tag cap">${esc(s.capability)}</span>`+
+      `<button class="favb ${on?'on':''}" id="spfav">${on?'♥ saved':'♡ save'}</button>`+
+    `</div>`+
+    `<div class="spctl">`+
+      `<span class="spslider">similarity ≥ <b id="spsv">${SP.minsim.toFixed(2)}</b>`+
+        `<input type="range" id="spsl" min="0.70" max="0.95" step="0.01" value="${SP.minsim}"></span>`+
+      `<span class="splegend">`+
+        [['contain','contains'],['same','same as'],['inter','intersects']]
+          .map(([k,l])=>`<span><i style="background:${cssv('--'+k)}"></i>${l}</span>`).join('')+
+      `</span>`+
+    `</div>`+
+    `<div class="spbody"><div class="spgraph"><div id="spg" style="width:100%;height:100%"></div>`+
+      `<div class="spgcount" id="spgc"></div>`+
+      `<div class="sphint">drag a node to rearrange · scroll to zoom · click for full info</div></div>`+
+    `<div class="spdrag" id="spdrag" title="drag to resize"></div>`+
+    `<div class="sppanel">`+
+      `<div class="dsum">${esc(s.summary||'')}</div>${originHTML(s)}`+
+      ((s.steps||[]).length?`<div class="eyebrow">Workflow</div><div class="steps" id="spsteps">`+
+        s.steps.map((x,ix)=>`<span class="wstep" data-si="${ix}">${esc(x)}</span>`).join('')+`</div>`:'')+
+      ((s.tech||[]).length?`<div class="eyebrow">Tech</div><div class="kv">`+
+        s.tech.map(t=>`<span class="tag">${esc(t)}</span>`).join('')+`</div>`:'')+
+      `<div id="sprel"></div></div></div>`;
+  const hlStep=sis=>{document.querySelectorAll('#spsteps .wstep.shl').forEach(w=>w.classList.remove('shl'));
+    (Array.isArray(sis)?sis:(sis>=0?[sis]:[])).forEach(si=>{const w=document.querySelector(`#spsteps .wstep[data-si="${si}"]`);if(w)w.classList.add('shl');});};
+  window._hlStep=hlStep;
+  document.getElementById('spfav').onclick=async()=>{const r=await POST('/api/fav',{id:s.id});
+    if(!r||r.error){askSignIn('Sign in to save this skill.');return;}
+    if(r.on)FAVS.add(s.id);else FAVS.delete(s.id);const b=document.getElementById('spfav');
+    b.classList.toggle('on',r.on);b.textContent=r.on?'♥ saved':'♡ save';};
+  wireSplit();
+  const sl=document.getElementById('spsl');sl.oninput=e=>{SP.minsim=+e.target.value;document.getElementById('spsv').textContent=SP.minsim.toFixed(2);clearTimeout(SP._t);SP._t=setTimeout(()=>loadSPGraph(true),110);};
+  loadSPGraph(false,true);el.classList.add('on');}
+// The right threshold is a property of the skill, not a constant: `review` has 397 intersects and
+// needs a high bar, a quiet skill has six and needs none. Fetch once at the floor, then pick the
+// cutoff that leaves a readable neighbourhood and move the slider there.
+const SP_TARGET=45,SP_FLOOR=0.70;
+async function loadSPGraph(quick,auto){
+  const g=await API(`/api/graph?id=${SP.id}&minsim=${auto?SP_FLOOR:SP.minsim}`);
+  // typed relations only — the `similar` layer is a raw cosine candidate set, not a verified
+  // relation, and at this scale it drowns the edges that were actually judged
+  g.edges=(g.edges||[]).filter(e=>e.type!=='near');
+  if(auto){
+    const sims=g.edges.filter(e=>e.a===SP.id||e.b===SP.id).map(e=>e.sim||0).sort((a,b)=>b-a);
+    SP.minsim=sims.length>SP_TARGET
+      ? Math.min(0.95,Math.max(SP_FLOOR,Math.ceil(sims[SP_TARGET-1]*100)/100))
+      : SP_FLOOR;
+    const sl=document.getElementById('spsl'),sv=document.getElementById('spsv');
+    if(sl)sl.value=SP.minsim;if(sv)sv.textContent=SP.minsim.toFixed(2);
+  }
+  // a neighbourhood is the centre and the skills it is related to. Filtering edges alone also drags
+  // in skills that only touch each other, which is what made the view balloon.
+  const keep=new Set([SP.id]);
+  g.edges.forEach(e=>{const j=e.a===SP.id?e.b:(e.b===SP.id?e.a:null);
+    if(j!=null&&(e.sim||0)>=SP.minsim-1e-9)keep.add(j);});
+  g.edges=g.edges.filter(e=>keep.has(e.a)&&keep.has(e.b));
+  g.nodes=(g.nodes||[]).filter(n=>keep.has(n.id));
+  const nodes=g.nodes.map(n=>({...n})),edges=g.edges.map(e=>({a:e.a,b:e.b,type:e.type,sim:e.sim,dir:e.dir||0}));
+  drawForce(document.getElementById('spg'),nodes,edges,{W:1160,H:800,center:SP.id,colorEdge:true,colorNode:capPalette(nodes),iters:Math.max(80,Math.min(240,Math.round(26000/Math.max(1,nodes.length)))),dur:quick?150:300,onClick:n=>{if(n.id>=0)showFullInfo(n.id,SP.id);},onHover:n=>window._hlStep&&window._hlStep((n&&n.sis)||[])});
+  const c=document.getElementById('spgc');
+  if(c){const k=nodes.filter(n=>n.tier===0).length;
+    c.textContent=`${k} in focus · ${nodes.length} skills · ${edges.length} relations`;}
+  renderSPList(g);}
+const SPFOLD={same:false,contain:false,intersect:false};
+// The panel is a fixed 400px, which is wrong in both directions: too narrow to read long skill
+// names, too wide when you want the graph. Make the split a user setting, and remember it.
+const SPW={min:280,max:760,def:400};
+function applySplit(w){const b=document.querySelector('.spbody');if(!b)return;
+  w=Math.round(Math.max(SPW.min,Math.min(SPW.max,w)));
+  b.style.setProperty('--sppw',w+'px');try{localStorage.setItem('sf-spw',w);}catch(e){}}
+function wireSplit(){
+  const h=document.getElementById('spdrag'),b=document.querySelector('.spbody');if(!h||!b)return;
+  let w0=SPW.def;try{w0=+localStorage.getItem('sf-spw')||SPW.def;}catch(e){}
+  applySplit(w0);
+  h.addEventListener('pointerdown',ev=>{ev.preventDefault();
+    const r=b.getBoundingClientRect();
+    h.classList.add('on');document.body.classList.add('spresizing');h.setPointerCapture(ev.pointerId);
+    const move=e=>applySplit(r.right-e.clientX);
+    const up=()=>{h.classList.remove('on');document.body.classList.remove('spresizing');
+      h.removeEventListener('pointermove',move);h.removeEventListener('pointerup',up);
+      h.removeEventListener('pointercancel',up);};
+    h.addEventListener('pointermove',move);h.addEventListener('pointerup',up);
+    h.addEventListener('pointercancel',up);});
+  h.addEventListener('dblclick',()=>applySplit(SPW.def));   // back to the default
+}
+function renderAddLocalOnly(el){
+  el.innerHTML=`<h1>Add My Skill to the graph</h1>`+
+    `<p class="lede">This one runs on your machine, not here.</p>`+
+    `<div class="localonly">`+
+      `<p>Placing a skill is the only part of SkillFabri that is not just a lookup. It reads your `+
+      `<b>SKILL.md</b>, labels it with an LLM, embeds it, and searches the whole corpus for `+
+      `neighbours — which needs two things this public site deliberately does not carry:</p>`+
+      `<ul>`+
+        `<li><b>The profile embeddings.</b> A gigabyte of vectors. They are regenerable, so they `+
+        `are not committed and not deployed.</li>`+
+        `<li><b>An OpenRouter key.</b> The labelling step calls a model. On a public site every `+
+        `visitor would be spending someone else's money, so there is no key here — you bring `+
+        `your own.</li>`+
+      `</ul>`+
+      `<p>Everything else on this site — browsing, search, and every skill's relation graph — `+
+      `works without either.</p>`+
+      `<div class="eyebrow">Run it yourself</div>`+
+      `<pre class="localcmd">git clone https://github.com/Jianheng-Liu/SkillFabri
+cd SkillFabri
+python -m venv .venv &amp;&amp; source .venv/bin/activate
+pip install -r requirements.txt
+
+cp env.sh.example env.sh          <span class="cmt"># put your OPENROUTER_API_KEY in it</span>
+source env.sh
+
+<span class="cmt"># then generate data/skill_embeddings.npy — see the README</span>
+python explorer/app.py --port 8000</pre>`+
+      `<div class="lofoot">`+
+        `<a class="btn" href="https://github.com/Jianheng-Liu/SkillFabri" target="_blank" rel="noopener" style="width:auto;margin:0">↗ Repository and setup</a>`+
+        `<button class="lobrowse" onclick="show('browse')">Browse the graph instead →</button>`+
+      `</div>`+
+    `</div>`;}
+function renderSPList(g){const host=document.getElementById('sprel');if(!host)return;
+  const steps=(SP.data&&SP.data.steps)||[];const nmap={};(g.nodes||[]).forEach(n=>nmap[n.id]=n);
+  const by={same:[],contain:[],intersect:[]};
+  (g.edges||[]).forEach(e=>{const j=e.a===SP.id?e.b:(e.b===SP.id?e.a:null);if(j==null)return;
+    const n=nmap[j];if(!n||!by[e.type])return;
+    by[e.type].push({id:j,name:n.name,sim:e.sim,sis:(n.sis||[]),dir:e.dir||0,type:e.type});});
+  // one line per relation: what it is, what it is called, how close. The shared steps are
+  // shown by highlighting the workflow above on hover, not by printing them here — at 300
+  // relations that turned the panel into a thousand lines of blue text.
+  const SEC=[['same','Same'],['contain','Contains'],['intersect','Intersects']];
+  const none=SEC.filter(([t])=>!by[t].length).map(([,l])=>l.toLowerCase());
+  host.innerHTML=SEC.map(([t,label])=>{
+    const arr=by[t];const col=cssv(REL[t]);
+    if(!arr.length)return '';
+    arr.sort((a,b)=>b.sim-a.sim);
+    const rows=arr.map(r=>{const d=r.type==='contain'?(r.dir===1?' ⊇':' ⊆'):'';
+      const sl=(r.sis||[]).filter(k=>steps[k]);
+      return `<div class="relitem"><div class="relrow" data-id="${r.id}" data-sis="${sl.join(',')}">`+
+        `<span class="rb" style="background:${col}">${t}</span>`+
+        `<span class="rdir" title="${d?(r.dir===1?'this skill is the broader one':'the other skill is the broader one'):''}">${d.trim()}</span>`+
+        `<span class="rn">${esc(r.name)}</span>`+
+        (sl.length?`<button class="rsx" title="show the shared operations">×${sl.length}</button>`:'')+
+        `<span class="rs">${(r.sim||0).toFixed(2)}</span></div>`+
+        (sl.length?`<div class="rshare">${sl.map(k=>'↔ '+esc(steps[k])).join('<br>')}</div>`:'')+
+      `</div>`;}).join('');
+    return `<div class="relsec" data-t="${t}"><div class="relhead" role="button" tabindex="0">`+
+      `<span class="dot" style="background:${col}"></span>${label}`+
+      `<b class="relcount">${arr.length}</b><span class="relcar">▾</span></div>`+
+      `<div class="relrows">${rows}</div></div>`;
+  }).join('')+
+    // one quiet line beats two empty section headers: absence is worth stating, not framing
+    (none.length?`<div class="relnone">no ${none.join(' · no ')}</div>`:'');
+  // the shared operations are the reason an intersect exists, but printing them for 300 rows
+  // buried everything — they open on the count badge instead
+  // a section header folds its own rows away; `intersect` runs to hundreds, and the two
+  // small sections above it were being pushed off the top of the panel by it
+  host.querySelectorAll('.relsec>.relhead:not(.empty)').forEach(h=>{
+    const sec=h.parentNode,t=sec.dataset.t;
+    if(SPFOLD[t])sec.classList.add('fold');
+    const flip=()=>{const on=sec.classList.toggle('fold');SPFOLD[t]=on;};
+    h.onclick=flip;
+    h.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();flip();}};});
+  host.querySelectorAll('.rsx').forEach(b=>b.onclick=ev=>{
+    ev.stopPropagation();b.closest('.relitem').classList.toggle('open');});
+  host.querySelectorAll('.relrow').forEach(r=>{r.onclick=()=>showFullInfo(+r.dataset.id,SP.id);
+    const sis=(r.dataset.sis||'').split(',').filter(x=>x!=='');
+    r.onmouseenter=()=>{window._hlStep&&window._hlStep(sis);window._hlNode&&window._hlNode(+r.dataset.id);};
+    r.onmouseleave=()=>{window._hlStep&&window._hlStep([]);window._hlNode&&window._hlNode(-1);};});}
+function closeSkill(){
+  // walking a chain of skills should be reversible; only the first one closes the page
+  if(SPHIST.length){openSkill(SPHIST.pop(),true);return;}
+  SP.id=-1;document.getElementById('skillpage').classList.remove('on');}
+function closeDrawer(){document.getElementById('drawer').classList.remove('on');document.getElementById('scrim').classList.remove('on');}
+document.getElementById('scrim').onclick=closeDrawer;
+async function showFullInfo(id,anchor){
+  const q='/api/full?id='+id+(anchor!=null&&anchor>=0?'&anchor='+anchor:'');
+  const s=await API(q);const im=document.getElementById('infomodal');
+  const chips=a=>(a&&a.length)?a.map(x=>`<span class="tag">${esc(x)}</span>`).join(''):'';
+  const hls=(s.hlsteps||[]);
+  // The card used to be nineteen equal rows, so nothing led. It is now ordered by what a reader
+  // actually asks: what does it do, who wrote it, what does it touch, how does it relate.
+  const grp=(label,body)=>body?`<div class="imsec"><div class="imk">${label}</div><div class="imv">${body}</div></div>`:'';
+  const wf=(s.steps&&s.steps.length)
+    ? `<ol class="imwf">${s.steps.map((x,ix)=>`<li class="wstep${hls.includes(ix)?' shl':''}" data-si="${ix}">${esc(x)}</li>`).join('')}</ol>`
+      +((hls.length&&s.anchor_name)?`<div class="imshare">↔ ${hls.length} shared operation${hls.length>1?'s':''} with ${esc(s.anchor_name)}</div>`:'')
+    : '';
+  const rel=Object.entries(s.counts||{}).sort()
+    .map(([k,v])=>`<span class="imrel" style="border-color:${cssv(REL[k]||'--line')};color:${cssv(REL[k]||'--ink2')}">${k} ${v}</span>`).join('');
+  const io=[['input',s.input],['output',s.output],['produces',s.produces]]
+    .filter(x=>(x[1]||[]).length)
+    .map(([k,v])=>`<span class="imio"><b>${k}</b>${(v||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</span>`).join('');
+  im.innerHTML=
+    `<div class="imcard">`+
+      `<div class="imhead">`+
+        `<button class="x" onclick="closeInfo()">✕</button>`+
+        `<div class="imtop">`+
+          `<span class="spmark" style="background:${actCol(s.activity)}1e;border-color:${actCol(s.activity)}33;color:${actCol(s.activity)}">`+
+            `<svg viewBox="0 0 20 20" fill="none" width="17" height="17">${(window.SF_ICONS||{})[s.activity]||window.SF_ICON_FALLBACK||''}</svg></span>`+
+          `<div style="min-width:0"><h2>${esc(s.name)}</h2>`+
+            `<div class="imtags"><span class="tag act" style="background:${actCol(s.activity)}">${esc(s.activity)}</span>`+
+            `<span class="tag cap">${esc(s.capability)}</span>`+
+            (s.object?`<span class="tag">${esc(s.object)}</span>`:'')+`</div></div>`+
+        `</div>`+
+        `<div class="dsum" style="margin:11px 0 0">${esc(s.summary||'')}</div>`+
+        (s.author||s.repo?`<div class="origin" style="margin:9px 0 0">`+
+          (s.author?`<span class="by">${esc(s.author)}</span>`:'')+
+          (s.author&&s.repo?'<span>·</span>':'')+
+          (s.repo?(s.repo_url?`<a href="${esc(s.repo_url)}" target="_blank" rel="noopener">${esc(s.repo)}</a>`:esc(s.repo)):'')+
+          (s.pop?`<span>·</span><span>${s.pop.toLocaleString()} ${s.pop_src==='clawhub_downloads'?'installs':'repo ★'}</span>`:'')+
+          (s.market?`<span>·</span><span>${esc(s.market)}</span>`:'')+`</div>`:'')+
+      `</div>`+
+      `<div class="imbody">`+
+        grp('Workflow',wf)+
+        grp('Relations',rel)+
+        grp('Tech',chips(s.tech))+
+        grp('Concern',chips(s.concern))+
+        grp('Domain',chips(s.domain))+
+        grp('Tools',chips(s.tools))+
+        grp('Artifacts',io)+
+        grp('Authority',chips(s.authority))+
+        grp('Subject',s.subject?esc(s.subject):'')+
+      `</div>`+
+      `<div class="imfoot">`+
+        (s.url?`<a class="imsrc" href="${esc(s.url)}" target="_blank" rel="noopener">↗ View source</a>`:'')+
+        `<button class="btn" style="width:auto;margin:0" onclick="closeInfo();openSkill(${id})">◈ Open graph →</button>`+
+      `</div>`+
+    `</div>`;
+  im.classList.add('on');}
+function closeInfo(){document.getElementById('infomodal').classList.remove('on');}
+addEventListener('keydown',e=>{if(e.key==='Escape'){if(document.getElementById('infomodal').classList.contains('on'))closeInfo();else{closeSkill();closeDrawer();}}});
+
+/* ===== OVERVIEW ===== */
+let HERO=null;
+/* ===== BROWSE (dimension picker → values → list) ===== */
+const DIMLABELS=[['pop','All'],['activity','Activity'],['capability','Capability'],['object','Object'],['concern','Concern'],['domain','Domain'],['tool','Tool'],['occupation','Occupation']];
+// coverage is uneven, so these are filters ("show only the ones that have it"), never columns
+const HASOPTS=[['','anything'],['dups','has a duplicate'],['quality','has a quality rating'],['installs','has real install counts']];
+let BR={dim:'pop',val:null,page:0,q:'',vq:'',sort:'pop',has:''};
+async function renderBrowse(){const el=document.getElementById('v-browse');if(!DIMS)DIMS=await API('/api/dims');
+  el.innerHTML=`<div class="browse"><div class="rail">`+
+    `<div class="seg" id="seg">${DIMLABELS.map(([d,l])=>`<button data-d="${d}" class="${d===BR.dim?'on':''}">${l}</button>`).join('')}</div></div>`+
+    `<div class="brmain"><div class="brsearch"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>`+
+      `<input id="q" placeholder="Search every skill…" autocomplete="off"></div>`+
+      `<div class="vtiles" id="vtiles"></div>`+
+      `<div class="listhead"><h2 id="lh">Most popular</h2><b class="lcount" id="lc"></b><span class="n" id="ln"></span></div>`+
+      `<div class="grid" id="blist"></div><div class="pager" id="pager"></div></div></div>`;
+  document.getElementById('seg').querySelectorAll('button').forEach(b=>b.onclick=()=>{BR={dim:b.dataset.d,val:null,page:0,q:'',vq:''};(document.getElementById('q')||{}).value='';
+    document.getElementById('seg').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+    renderVals();
+    if(b.dataset.d==='pop')loadList();else clearList();});   // the grid is the page until one is picked
+  renderVals();loadList();}
+const CHEV='<svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2.5 4L5 6.5 7.5 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function ddHTML(id,opts,cur){const c=(opts.find(o=>o[0]===cur)||opts[0]||['',''])[1];
+  return `<span class="dd" id="${id}"><button class="dd-btn" type="button">${esc(c)}${CHEV}</button>`+
+    `<span class="dd-menu">`+opts.map(([k,l])=>
+      `<button class="dd-item${k===cur?' on':''}" type="button" data-v="${esc(k)}">${esc(l)}</button>`).join('')+
+    `</span></span>`;}
+function wireDD(id,pick){const dd=document.getElementById(id);if(!dd)return;
+  dd.querySelector('.dd-btn').onclick=e=>{e.stopPropagation();
+    document.querySelectorAll('.dd.open').forEach(o=>{if(o!==dd)o.classList.remove('open');});
+    dd.classList.toggle('open');};
+  dd.querySelectorAll('.dd-item').forEach(b=>b.onclick=e=>{e.stopPropagation();dd.classList.remove('open');pick(b.dataset.v);});}
+addEventListener('click',()=>document.querySelectorAll('.dd.open').forEach(o=>o.classList.remove('open')));
+addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.dd.open').forEach(o=>o.classList.remove('open'));});
+// The values used to be a scrolling column in the rail, which put the thing you choose from
+// furthest from the thing it changes. They are tabs across the top of the results now. Two
+// dimensions are far too large to lay out whole — capability has 663 values and tool 3,825 —
+// so those open on the busiest few and reveal the rest behind a filter.
+// Browsing is two steps, the way the landing page does it: the values fill the page as cards,
+// and the skills for one of them arrive only after you pick it. Showing both at once meant the
+// grid was always a strip and the list always started below the fold.
+const VCAP=48;
+function renderVals(){const vt=document.getElementById('vtiles');if(!vt)return;
+  if(BR.dim==='pop'||BR.q){vt.innerHTML='';return;}
+  if(BR.val){                      // picked: the grid collapses to a way back out
+    vt.innerHTML=`<button class="vback" id="vback">← all ${esc(BR.dim)}</button>`;
+    document.getElementById('vback').onclick=()=>{BR.val=null;BR.page=0;renderVals();clearList();};
+    return;}
+  const all=DIMS[BR.dim]||[];
+  const vals=all.filter(x=>!BR.vq||x.val.toLowerCase().includes(BR.vq));
+  const long=all.length>VCAP;
+  const shown=(BR.vall||BR.vq)?vals:vals.slice(0,VCAP);
+  const ic=BR.dim==='activity';       // only the activities carry an icon; the rest are words
+  vt.innerHTML=
+    (long?`<div class="vbar"><input class="vfilter" id="vfilter" placeholder="filter ${all.length.toLocaleString()} ${esc(BR.dim)} values…" autocomplete="off" value="${esc(BR.vq||'')}">`+
+      (BR.vq?'':`<button class="vmore" id="vmore">${BR.vall?`Show the busiest ${VCAP}`:`Show all ${all.length.toLocaleString()}`}</button>`)+`</div>`:'')+
+    (shown.length
+      ? `<div class="vgrid${ic?'':' noic'}">`+shown.map(x=>
+          `<button class="vcard" data-v="${esc(x.val)}"`+(ic?` style="--vc:${actCol(x.val)}"`:'')+`>`+
+          (ic?`<span class="vic">${actIcon(x.val)}</span>`:'')+
+          `<span class="vn">${esc(x.val)}</span>`+
+          `<span class="vc">${x.count.toLocaleString()} skills</span></button>`).join('')+
+        (!BR.vall&&!BR.vq&&vals.length>VCAP
+          ? `<button class="vcard vall" id="vmore2">All ${vals.length.toLocaleString()} ${esc(BR.dim)} →</button>`:'')+
+        `</div>`
+      : `<div class="vnote">No ${esc(BR.dim)} matches “${esc(BR.vq)}”.</div>`);
+  const f=document.getElementById('vfilter');
+  if(f)f.addEventListener('input',e=>{BR.vq=e.target.value.toLowerCase();const at=e.target.selectionStart;
+    renderVals();const g=document.getElementById('vfilter');if(g){g.focus();g.setSelectionRange(at,at);}});
+  ['vmore','vmore2'].forEach(id=>{const m=document.getElementById(id);
+    if(m)m.onclick=()=>{BR.vall=!BR.vall;renderVals();};});
+  vt.querySelectorAll('.vcard[data-v]').forEach(b=>b.onclick=()=>{
+    BR.val=b.dataset.v;BR.page=0;BR.q='';(document.getElementById('q')||{}).value='';
+    renderVals();loadList();});}
+// nothing is picked, so there is nothing to list — say that instead of leaving stale cards
+function clearList(){
+  const g=document.getElementById('blist');if(g)g.innerHTML='';
+  ['lh','lc','ln'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent='';});
+  const p=document.getElementById('pager');if(p)p.innerHTML='';
+  // the heading row is a bordered count pill and two dropdowns; emptying their text leaves the
+  // frames behind, so the row itself has to go
+  const h=document.querySelector('.listhead');if(h)h.style.display='none';}
+async function loadList(){const el=document.getElementById('blist');if(!el)return;el.innerHTML='<div class="empty" style="grid-column:1/-1"><span class="spin"></span></div>';
+  const p=new URLSearchParams();if(BR.q)p.set('q',BR.q);else if(BR.dim&&BR.dim!=='pop'&&BR.val){p.set('dim',BR.dim);p.set('val',BR.val);}p.set('page',BR.page);
+  if(BR.sort&&BR.sort!=='pop')p.set('sort',BR.sort); if(BR.has)p.set('has',BR.has);
+  const d=await API('/api/list?'+p);
+  const hd=document.querySelector('.listhead');if(hd)hd.style.display='';
+  document.getElementById('lh').textContent=BR.q?`Search: “${BR.q}”`:(BR.val||'All skills');
+  const lc=document.getElementById('lc');
+  if(lc)lc.textContent=(d.total||0).toLocaleString()+(d.total===1?' skill':' skills');
+  document.getElementById('ln').innerHTML=
+    'sorted by '+ddHTML('sortsel',(d.sorts||[]).map(x=>[x.k,x.label]),d.sort||'pop')+
+    ' showing '+ddHTML('hassel',HASOPTS,BR.has||'');
+  wireDD('sortsel',v=>{BR.sort=v;BR.page=0;loadList();});
+  wireDD('hassel', v=>{BR.has=v; BR.page=0;loadList();});
+  el.innerHTML=d.items.length?d.items.map(cardHTML).join(''):'<div class="empty" style="grid-column:1/-1">No skills match.</div>';wireCards(el);
+  const pages=Math.ceil(d.total/d.size),pg=document.getElementById('pager');
+  pg.innerHTML=pages>1?`<button ${BR.page<=0?'disabled':''} id="prev">← prev</button><button disabled style="border:0;background:none">${BR.page+1} / ${pages}</button><button ${BR.page>=pages-1?'disabled':''} id="next">next →</button>`:'';
+  const pv=document.getElementById('prev'),nx=document.getElementById('next');if(pv)pv.onclick=()=>{BR.page--;loadList();};if(nx)nx.onclick=()=>{BR.page++;loadList();};}
+let sT;document.addEventListener('input',e=>{if(e.target.id!=='q')return;clearTimeout(sT);
+  const q=e.target.value.trim();
+  sT=setTimeout(async()=>{show('browse');if(!R.browse){await renderBrowse();R.browse=1;}
+    BR={dim:BR.dim,val:null,page:0,q,vq:BR.vq,sort:BR.sort,has:BR.has,vall:BR.vall};
+    renderVals();                      // a query hides the grid; clearing it brings the grid back
+    if(q||BR.dim==='pop')loadList();else clearList();},220);});
+function selectDim(dim,val){show('browse');const go=()=>{BR={dim,val,page:0,q:'',vq:'',sort:BR.sort||'pop',has:BR.has||''};(document.getElementById('q')||{}).value='';
+  const seg=document.getElementById('seg');if(seg)seg.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x.dataset.d===dim));
+  renderVals();                        // BR.val is already set, so this draws the way-back, not the grid
+  if(val||dim==='pop')loadList();else clearList();};
+  if(!R.browse){renderBrowse().then(()=>{R.browse=1;go();});}else go();}
+
+/* ===== ADD YOUR SKILL (md pipeline) ===== */
+// The public site cannot run this: it ships without the embeddings and without a key, so the
+// honest thing is to say so up front rather than let someone paste a file and hit a 503.
+let CAPS=null;
+async function renderAdd(){const el=document.getElementById('v-add');
+  if(CAPS===null){try{CAPS=await API('/api/caps');}catch(e){CAPS={add:false,why:{}};}}
+  if(!CAPS.add)return renderAddLocalOnly(el);
+  el.innerHTML=`<h1>Add My Skill to the graph</h1><p class="lede">Drop your <b>SKILL.md</b> or paste it in full. Everything is extracted from the file itself — you label nothing. About 20 seconds.</p>`+
+   `<div class="addwrap"><div class="form">
+     <div class="drop" id="drop">⬆ Drop a <b>SKILL.md</b> here, or click to choose<input type="file" id="file" accept=".md,.markdown,.txt" hidden></div>
+     <div class="orline"><span>or paste the file</span></div>
+     <textarea id="a-md" class="mdbox" spellcheck="false" placeholder="---&#10;name: pr-security-reviewer&#10;description: Reviews PR diffs for injection flaws and leaked secrets.&#10;---&#10;&#10;## Workflow&#10;1. Fetch the pull-request diff&#10;2. Run semgrep over the changed files&#10;3. Post inline findings that gate the PR"></textarea>
+     <div id="fname" class="hint"></div>
+     <button class="btn" id="a-go">◈ Run pipeline → place in graph</button>
+     <div class="hint" style="margin-top:9px">The pipeline reads the raw file and extracts the <b>function, steps, tech, activity and object</b> itself, then embeds it, finds neighbours, and types the relations.</div>
+   </div><div id="a-res"><div class="empty">Your skill's place in the graph will appear here.</div></div></div>`;
+  const drop=document.getElementById('drop'),file=document.getElementById('file'),box=document.getElementById('a-md');
+  drop.onclick=()=>file.click();
+  drop.ondragover=e=>{e.preventDefault();drop.classList.add('over');};drop.ondragleave=()=>drop.classList.remove('over');
+  drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');if(e.dataTransfer.files[0])readFile(e.dataTransfer.files[0]);};
+  file.onchange=e=>{if(e.target.files[0])readFile(e.target.files[0]);};
+  // a dropped file simply fills the box, so there is one source of truth for what gets sent
+  function readFile(f){const r=new FileReader();
+    r.onload=()=>{box.value=r.result;document.getElementById('fname').textContent='✓ '+f.name+' — '+r.result.length.toLocaleString()+' characters loaded';};
+    r.readAsText(f);}
+  box.addEventListener('input',()=>{document.getElementById('fname').textContent='';});
+  document.getElementById('a-go').onclick=()=>placeSkill(box.value.trim());}
+let LAST=null;
+async function placeSkill(md){const btn=document.getElementById('a-go'),res=document.getElementById('a-res');
+  if(!md){res.innerHTML='<div class="empty">Drop a SKILL.md, or paste its contents above.</div>';return;}
+  const body={md};
+  const uname=(md.match(/^\s*name:\s*(.+)$/m)||[])[1] || (md.match(/^#\s+(.+)$/m)||[])[1] || 'your skill';
+  btn.disabled=true;btn.textContent='Running…';
+  res.innerHTML=`<div class="pipe"><div class="st on">1 · label</div><div class="st">2 · embed</div><div class="st">3 · neighbours</div><div class="st">4 · relations</div></div><div class="empty"><span class="spin"></span><div style="margin-top:12px">labelling → embedding → finding neighbours → typing relations…</div></div>`;
+  try{const r=await POST('/api/place',body);if(r.error){res.innerHTML=`<div class="empty">${esc(r.error)}</div>`;}else{LAST={...r,_name:(uname||(r.labels&&r.labels.name)||'your skill'),_body:body};renderPlacement(LAST);}}
+  catch(e){res.innerHTML='<div class="empty">Something went wrong. Is the backend running?</div>';}
+  btn.disabled=false;btn.textContent='◈ Run pipeline → place in graph';}
+function renderPlacement(r){const res=document.getElementById('a-res');const nm=r._name;const typed=r.neighbours.filter(n=>n.type);
+  const L=r.labels;const labelCard=L?`<div class="labelcard"><div class="eyebrow" style="margin:0 0 8px">Stage 1 · extracted labels</div>`+
+    [['fine',L.fine],['summary',L.summary],['activity',L.activity],['object',L.object],['steps',(L.steps||[]).join(' › ')],['tech',(L.tech||[]).join(', ')],['concern',(L.concern||[]).join(', ')]].filter(x=>x[1]).map(x=>`<div class="lrow"><div class="lk">${x[0]}</div><div>${esc(x[1])}</div></div>`).join('')+`</div>`:'';
+  res.innerHTML=`<div class="pipe"><div class="st done">1 · label</div><div class="st done">2 · embed</div><div class="st done">3 · neighbours</div><div class="st done">4 · relations</div></div>`+
+    labelCard+
+    `<div class="sugg"><div class="suggc"><div class="l">Best-fit activity</div><div class="v" style="color:${actCol(r.suggested_activity)}">${esc(r.suggested_activity)}</div></div>`+
+    `<div class="suggc"><div class="l">Best-fit capability</div><div class="v">${esc(r.suggested_capability)}</div></div>`+
+    `<div class="suggc"><div class="l">Typed relations</div><div class="v">${typed.length} / ${r.neighbours.length}</div></div></div>`+
+    `<div class="legend"><span><span class="dot" style="background:${cssv('--contain')}"></span>contain</span><span><span class="dot" style="background:${cssv('--same')}"></span>same</span><span><span class="dot" style="background:${cssv('--inter')}"></span>intersect</span><span style="color:var(--muted)">hollow = candidate</span></div>`+
+    `<div class="ngraph" style="border:1px solid var(--line);border-radius:13px;overflow:hidden;margin-bottom:14px;position:relative"><div id="pg"></div><div class="sphint" style="position:absolute">click a node = full info · click centre = full graph</div></div>`+
+    `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px"><button class="btn" id="openfull" style="width:auto;margin:0;padding:9px 18px">◈ Open full graph →</button>`+
+      `<span id="savedmsg" class="hint" style="align-self:center">saving to <b>My Skills</b>…</span></div>`+
+    `<div class="eyebrow">Nearest skills</div><div class="grid" style="grid-template-columns:1fr">`+r.neighbours.slice(0,20).map(n=>{const col=n.type?cssv(REL[n.type]):'var(--muted)';const d=n.type==='contain'?(n.broader==='new'?' ⊇ yours':(n.broader==='cand'?' ⊆ yours':'')):'';
+      return `<div class="card" data-id="${n.id}"><div class="top"><span class="nm">${esc(n.name)}</span><span class="pop mono" style="color:${col}">${n.type?esc(n.type)+d:'candidate'} · ${n.sim.toFixed(2)}</span></div><div class="sum" style="min-height:0">${esc(n.summary)}</div><div class="meta"><span class="tag act" style="background:${actCol(n.activity)}">${esc(n.activity)}</span><span class="tag cap">${esc(n.capability)}</span></div></div>`;}).join('')+`</div>`;
+  res.querySelectorAll('.card').forEach(c=>c.onclick=()=>openSkill(+c.dataset.id));
+  const shown=r.neighbours.slice(0,20),sset=new Set(shown.map(n=>n.id));
+  const cn={id:-1,name:nm,activity:r.suggested_activity,pop:0},nodes=[cn].concat(shown.map(n=>({id:n.id,name:n.name,activity:n.activity,pop:n.pop})));
+  const star=shown.map(n=>({a:-1,b:n.id,type:n.type||'intersect',sim:n.sim||0.75,
+    dir:n.type==='contain'?(n.broader==='new'?1:(n.broader==='cand'?-1:0)):0}));
+  const among=(r.neigh_edges||[]).filter(e=>sset.has(e.a)&&sset.has(e.b)).map(e=>({a:e.a,b:e.b,type:e.type,sim:e.sim,dir:e.dir||0}));
+  drawForce(document.getElementById('pg'),nodes,star.concat(among),{W:720,H:340,center:-1,colorEdge:true,colorNode:n=>n.id===-1?cssv('--accent'):actCol(n.activity),onClick:n=>{if(n.id>=0)showFullInfo(n.id);else openPlacedFull();}});
+  document.getElementById('openfull').onclick=openPlacedFull;
+  // a skill you placed is yours — it lands in My Skills without asking
+  (async()=>{try{
+    await POST('/api/save',{name:nm,summary:(L&&L.summary)||'',steps:(L&&L.steps)||[],tech:(L&&L.tech)||[],
+      activity:r.suggested_activity,capability:r.suggested_capability,labels:L,
+      neighbours:r.neighbours,neigh_edges:r.neigh_edges,ts:Date.now()});
+    const t=document.getElementById('savedmsg');
+    if(t)t.innerHTML='✓ Saved to <b>My Skills</b>';
+  }catch(_){}})();}
+function openPlacedFull(){if(!LAST)return;const L=LAST.labels;showAdded({name:LAST._name,summary:(L&&L.summary)||'',steps:(L&&L.steps)||[],tech:(L&&L.tech)||[],activity:LAST.suggested_activity,capability:LAST.suggested_capability,neighbours:LAST.neighbours,neigh_edges:LAST.neigh_edges});}
+
+/* ===== MY SKILLS ===== */
+async function renderMine(){const el=document.getElementById('v-mine');el.innerHTML='<div class="empty"><span class="spin"></span></div>';
+  if(!signedIn())await loadMe();
+  if(!signedIn()){
+    el.innerHTML=`<h1>My Skills</h1><p class="lede">Your saved skills live with your account.</p>`+
+      `<div class="localonly" style="max-width:540px"><p>A saved skill has to belong to somebody. `+
+      `Sign in and this page becomes your own list — nobody else can see it or change it.</p>`+
+      `<p>Everything else here works without an account: browsing, search, and every skill's `+
+      `relation graph.</p><div class="lofoot">`+
+      `<button class="btn" style="width:auto;margin:0" onclick="askSignIn('Sign in to keep your own list.')">Sign in</button>`+
+      `<button class="lobrowse" onclick="show('browse')">Browse the graph instead →</button>`+
+      `</div></div>`;
+    return;}
+  const m=await API('/api/mine');FAVS=new Set(m.favorites.map(s=>s.id));
+  el.innerHTML=`<h1>My Skills</h1><p class="lede">Skills you saved from the market, and skills you added yourself.</p>`+
+    `<div class="eyebrow">Added by you · ${m.added.length}</div><div class="grid" id="mineadd"></div>`+
+    `<div class="eyebrow">Favourites · ${m.favorites.length}</div><div class="grid" id="minefav"></div>`;
+  const add=document.getElementById('mineadd');
+  add.innerHTML=m.added.length?m.added.map((s,i)=>`<div class="card" data-i="${i}"><button class="favb on" data-del="${s._id}" title="Remove">✕</button><div class="top"><span class="nm">${esc(s.name)}</span></div><div class="sum">${esc(s.summary)}</div><div class="meta"><span class="tag act" style="background:${actCol(s.activity)}">${esc(s.activity)}</span><span class="tag cap">${esc(s.capability)}</span><span class="tag">${(s.neighbours||[]).length} relations</span></div></div>`).join(''):'<div class="empty" style="grid-column:1/-1">Nothing yet — go to <b>Add My Skill</b> and save one.</div>';
+  add.querySelectorAll('.card').forEach(c=>c.onclick=e=>{if(e.target.closest('[data-del]'))return;showAdded(m.added[+c.dataset.i]);});
+  add.querySelectorAll('[data-del]').forEach(b=>b.onclick=async e=>{e.stopPropagation();
+    await POST('/api/remove_added',{id:+b.dataset.del});renderMine();});
+  const fav=document.getElementById('minefav');fav.innerHTML=m.favorites.length?m.favorites.map(cardHTML).join(''):'<div class="empty" style="grid-column:1/-1">No favourites — tap ♡ on any skill.</div>';wireCards(fav);}
+let SPA={min:0.70,s:null,_t:null};
+function showAdded(s){const el=document.getElementById('skillpage');const typed=(s.neighbours||[]).filter(n=>n.type);
+  const sims=(s.neighbours||[]).map(n=>n.sim||0);const lo=sims.length?Math.floor(Math.min(...sims)*100)/100:0.70,hi=Math.max(0.90,...sims);
+  SPA={min:lo,s,_t:null};
+  el.innerHTML=`<div class="sptop"><button class="spback" onclick="closeSkill()">←</button><span class="sptitle">${esc(s.name)}</span><span class="tag">yours</span>`+
+    `<span class="tag act" style="background:${actCol(s.activity)}">${esc(s.activity)}</span><span class="tag cap">${esc(s.capability)}</span>`+
+    `<span class="spslider">similarity ≥ <b id="spsv">${lo.toFixed(2)}</b><input type="range" id="spsl" min="${lo}" max="${hi.toFixed(2)}" step="0.01" value="${lo}">`+
+    `<span style="display:flex;gap:9px;margin-left:4px"><span><span class="dot" style="background:${cssv('--contain')}"></span>contain</span><span><span class="dot" style="background:${cssv('--same')}"></span>same</span><span><span class="dot" style="background:${cssv('--inter')}"></span>intersect</span></span></span></div>`+
+    `<div class="spbody"><div class="spgraph"><div id="spg" style="width:100%;height:100%"></div><div class="spgcount" id="spgc"></div></div>`+
+    `<div class="spdrag" id="spdrag" title="drag to resize"></div>`+
+    `<div class="sppanel"><div class="dsum">${esc(s.summary)}</div>`+
+    ((s.steps||[]).length?`<div class="steps">${s.steps.map(x=>`<span>${esc(x)}</span>`).join('')}</div>`:'')+
+    `<div class="relsec"><div class="relhead"><span class="dot" style="background:${cssv('--inter')}"></span>`+
+      `Typed relations<b class="relcount">${typed.length}</b></div><div class="relrows">`+
+    (s.neighbours||[]).map(n=>{const col=n.type?cssv(REL[n.type]):'var(--muted)';
+      const d=n.type==='contain'?(n.broader==='new'?'⊇':(n.broader==='cand'?'⊆':'')):'';
+      return `<div class="relrow" data-id="${n.id}"><span class="rb" style="background:${col}">${n.type||'cand'}</span>`+
+        `<span class="rdir">${d}</span><span class="rn">${esc(n.name)}</span>`+
+        `<span class="rs">${(n.sim||0).toFixed(2)}</span></div>`;}).join('')+
+    `</div></div></div></div>`;
+  el.querySelectorAll('.relrow').forEach(r=>r.onclick=()=>showFullInfo(+r.dataset.id));
+  wireSplit();
+  const sl=document.getElementById('spsl');sl.oninput=e=>{SPA.min=+e.target.value;document.getElementById('spsv').textContent=SPA.min.toFixed(2);clearTimeout(SPA._t);SPA._t=setTimeout(()=>drawAdded(true),110);};
+  drawAdded(false);el.classList.add('on');}
+function drawAdded(quick){const s=SPA.s;const ns=(s.neighbours||[]).filter(n=>n.type==='same'||n.type==='contain'||(n.sim||0)>=SPA.min).slice(0,80);const sset=new Set(ns.map(n=>n.id));
+  const cn={id:-1,name:s.name,activity:s.activity,pop:0},nodes=[cn].concat(ns.map(n=>({id:n.id,name:n.name,activity:n.activity,pop:n.pop})));
+  const star=ns.map(n=>({a:-1,b:n.id,type:n.type||'intersect',sim:n.sim||0.75,
+    dir:n.type==='contain'?(n.broader==='new'?1:(n.broader==='cand'?-1:0)):0}));
+  const among=(s.neigh_edges||[]).filter(e=>sset.has(e.a)&&sset.has(e.b)).map(e=>({a:e.a,b:e.b,type:e.type,sim:e.sim,dir:e.dir||0}));
+  const edges=star.concat(among);
+  drawForce(document.getElementById('spg'),nodes,edges,{W:1160,H:800,center:-1,colorEdge:true,dur:quick?150:300,colorNode:n=>n.id===-1?cssv('--accent'):actCol(n.activity),onClick:n=>{if(n.id>=0)showFullInfo(n.id);}});
+  const c=document.getElementById('spgc');if(c)c.textContent=`${nodes.length} skills · ${edges.length} relations`;}
+
+/* boot */
+loadMe().then(async()=>{paintMe();await refreshFavs();if(!applyHash())show('browse');});
+</script>
+</body>
+</html>

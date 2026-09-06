@@ -1,0 +1,8 @@
+# Everything the local build needs, and nothing else. The full project's pipeline
+# dependencies (openpyxl, sentence-transformers, scikit-learn, scipy) are not here —
+# this repo serves the finished graph, it does not rebuild one.
+flask>=3.0
+numpy>=1.24
+openai>=1.40          # labels a pasted SKILL.md, and the API embedder in tools/
+requests>=2.31        # the GitHub sign-in token exchange
+google-auth>=2.30     # verifies the Google ID token
