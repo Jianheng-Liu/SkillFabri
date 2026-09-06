@@ -1022,24 +1022,16 @@ function wireSplit(){
 function renderAddLocalOnly(el){
   // Two different readers land here. On the public site placement is off on purpose and the
   // answer is to run it yourself. On a local install it is off because a file or a key is
-  // missing, and the answer is the command that supplies it — telling that reader to "run it
+  // missing, and the answer is the command that supplies it. Telling that reader to "run it
   // locally" is telling them to do what they are already doing.
   if(ME&&ME.upstream)return renderAddNeeds(el);
   el.innerHTML=`<h1>Add My Skill to the graph</h1>`+
     `<p class="lede">This one runs on your machine, not here.</p>`+
     `<div class="localonly">`+
-      `<p>Placing a skill is the only part of SkillFabri that is not just a lookup. It reads your `+
-      `<b>SKILL.md</b>, labels it with an LLM, embeds it, and searches the whole corpus for `+
-      `neighbours — which needs two things this public site deliberately does not carry:</p>`+
-      `<ul>`+
-        `<li><b>The profile embeddings.</b> A gigabyte of vectors. They are regenerable, so they `+
-        `are not committed and not deployed.</li>`+
-        `<li><b>An OpenRouter key.</b> The labelling step calls a model. On a public site every `+
-        `visitor would be spending someone else's money, so there is no key here — you bring `+
-        `your own.</li>`+
-      `</ul>`+
-      `<p>Everything else on this site — browsing, search, and every skill's relation graph — `+
-      `works without either.</p>`+
+      `<p>Placing a skill reads your <b>SKILL.md</b>, labels it with a model, and searches the `+
+      `corpus for neighbours. That needs a gigabyte of vectors and an API key, and neither `+
+      `belongs on a public site where every visit would spend someone else's money.</p>`+
+      `<p>Browsing, search and the relation graphs work here without them.</p>`+
       `<div class="eyebrow">Run it yourself</div>`+
       `<pre class="localcmd">conda create -n skillfabri python=3.11 -y
 conda activate skillfabri
