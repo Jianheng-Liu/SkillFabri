@@ -22,7 +22,9 @@ import argparse, json, os, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-REPO = os.environ.get("SF_HF_REPO", "Jianheng-Liu/skillfabri-data")
+# The Hub account is not the GitHub one — no hyphen. Override with SF_HF_REPO if you
+# mirror the files somewhere else.
+REPO = os.environ.get("SF_HF_REPO", "JianhengLiu/skillfabri-data")
 BASE = f"https://huggingface.co/datasets/{REPO}/resolve/main"
 
 FILES = {
@@ -72,15 +74,23 @@ def download(name, dest, force=False):
         mode = "ab" if have and r.status_code == 206 else "wb"
         if mode == "wb":
             have = 0
+        # \r only redraws on a terminal. Piped to a file or a CI log it would leave one line
+        # per megabyte, so there it reports at intervals instead.
+        tty = sys.stdout.isatty()
         with open(tmp, mode) as f:
-            done = have
+            done, mark = have, have
             for chunk in r.iter_content(1 << 20):
                 f.write(chunk); done += len(chunk)
-                if total:
-                    pct = done / total * 100
-                    print(f"\r  {name}: {human(done)} / {human(total)}  {pct:5.1f}%",
-                          end="", flush=True)
-    print()
+                if not total:
+                    continue
+                if tty:
+                    print(f"\r  {name}: {human(done)} / {human(total)}  "
+                          f"{done / total * 100:5.1f}%", end="", flush=True)
+                elif done - mark >= 32 << 20:
+                    mark = done
+                    print(f"  {name}: {human(done)} / {human(total)}", flush=True)
+    if tty:
+        print()
     tmp.replace(dest)
     return dest
 

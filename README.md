@@ -98,7 +98,8 @@ hf upload skillfabri-data data/step_embeddings.npz  step_embeddings.npz  --repo-
 ```
 
 The third argument is the name *in the repo*, and `tools/fetch_data.py` looks for exactly those
-two names. Point it elsewhere with `SF_HF_REPO=you/your-dataset`.
+two names. Point it elsewhere with `SF_HF_REPO=you/your-dataset`. The default is
+[`JianhengLiu/skillfabri-data`](https://huggingface.co/datasets/JianhengLiu/skillfabri-data).
 
 </details>
 
