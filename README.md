@@ -7,9 +7,9 @@ The market is a pile of independently-authored `SKILL.md` files spread across se
 marketplaces, and nobody knows what is already in it. The same job is written a dozen times
 under a dozen names, and a listing tells you how a skill is advertised, not what it does.
 
-Every skill here was read from its own `SKILL.md` — its activity, capability, object and the
-concrete operations it performs — and then linked to every other skill by one of three
-relations:
+Every skill here was read from its own `SKILL.md`: its activity, capability, object and the
+concrete operations it performs. Each was then linked to every other skill by one of three
+relations.
 
 | | | |
 |---|---|---|
@@ -20,7 +20,8 @@ relations:
 ## Run it
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
+conda create -n skillfabri python=3.11 -y
+conda activate skillfabri
 pip install -r requirements.txt
 
 python explorer/app.py --port 8000
@@ -37,14 +38,14 @@ Click **Sign in → Continue with skillfabri.com**. A window opens, you sign in 
 GitHub, it closes, and you are connected. There is nothing to register and nothing to
 configure.
 
-Signing in gets you two things — skills you save from the market, and skills you add yourself —
-kept on your account rather than in this copy, so they are there from any machine.
+Signing in gets you two things: skills you save from the market, and skills you add yourself.
+Both are kept on your account rather than in this copy, so they are there from any machine.
 
 <details><summary>How that works, and how to avoid it</summary>
 
 The browser returns to `http://localhost:<port>` carrying a short-lived code, which this
-process trades for a token — the loopback flow `gh auth login` uses. The token lives in
-`data/upstream.json` (mode 600, gitignored); only its hash is kept server-side.
+process trades for a token. It is the loopback flow `gh auth login` uses. The token lives in
+`data/upstream.json` (mode 600, gitignored), and only its hash is kept server-side.
 
 To keep everything on this machine instead, set `SF_UPSTREAM=""` and bring your own provider:
 
@@ -61,7 +62,7 @@ Either provider alone is enough. Accounts then live only in `data/user.db`.
 ## Add your own skill
 
 This is the reason to run it yourself. Paste or drop a `SKILL.md` and it is read, labelled,
-embedded, and placed among its neighbours — you label nothing by hand.
+embedded, and placed among its neighbours. You label nothing by hand.
 
 It needs two things browsing does not:
 
@@ -80,14 +81,14 @@ Two arrays are far too large for git, so they are fetched from the
 | file | size | what stops working without it |
 |---|--:|---|
 | `skill_embeddings.npy` | 226 MB | Add My Skill |
-| `step_embeddings.npz` | 1.1 GB | the **×N** badge — which operations two skills share |
+| `step_embeddings.npz` | 1.1 GB | the **×N** badge, which operations two skills share |
 
 ```bash
 python tools/fetch_data.py              # both
 ```
 
-Resumable, and each file is checked against the corpus as it lands — a truncated array is still
-a file, and would otherwise fail much later somewhere unhelpful.
+Resumable, and each file is checked against the corpus as it lands. A truncated array is still
+a file, so without that check it would fail much later, somewhere unhelpful.
 
 `tools/build_embeddings.py` computes `skill_embeddings.npy` locally instead of downloading it:
 roughly 14k short texts through an embedding model, cents rather than dollars, or

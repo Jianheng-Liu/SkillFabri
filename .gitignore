@@ -17,6 +17,7 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+.conda/
 
 # os
 .DS_Store
