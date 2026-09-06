@@ -84,6 +84,24 @@ If you would rather not download, `tools/build_embeddings.py` rebuilds
 an embedding model: cents, not dollars. `--backend local` uses sentence-transformers and needs
 no key at all.
 
+<details><summary>Publishing them yourself</summary>
+
+`huggingface_hub` 1.x dropped `huggingface-cli`; the command is `hf`.
+
+```bash
+pip install huggingface_hub
+hf auth login                                   # token from huggingface.co/settings/tokens (Write)
+
+hf repo create skillfabri-data --type dataset
+hf upload skillfabri-data data/skill_embeddings.npy skill_embeddings.npy --repo-type dataset
+hf upload skillfabri-data data/step_embeddings.npz  step_embeddings.npz  --repo-type dataset
+```
+
+The third argument is the name *in the repo*, and `tools/fetch_data.py` looks for exactly those
+two names. Point it elsewhere with `SF_HF_REPO=you/your-dataset`.
+
+</details>
+
 ## Add your own skill
 
 Placing a skill reads its `SKILL.md`, labels it with an LLM, embeds it, and searches the corpus

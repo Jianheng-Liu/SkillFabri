@@ -50,7 +50,8 @@ def download(name, dest, force=False):
         sys.exit(f"Cannot reach {name} in {REPO} (HTTP {head.status_code}).\n"
                  f"  · not uploaded yet?  see 'The embeddings' in the README\n"
                  f"  · somewhere else?    set SF_HF_REPO to that dataset repo\n"
-                 f"  · private repo?      run: huggingface-cli login")
+                 f"  · private repo?      run: hf auth login   (huggingface_hub 1.x; "
+                 f"the old huggingface-cli is gone)")
     head.raise_for_status()
     total = int(head.headers.get("content-length", 0))
 
