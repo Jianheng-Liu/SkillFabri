@@ -549,7 +549,10 @@ let DIMS=null,FAVS=new Set(),ME=null;
 // Browsing needs no account. Saving does, because a favourite has to belong to somebody —
 // before this it belonged to the server, which meant every visitor shared one list.
 async function loadMe(){try{ME=await API('/api/me');}catch(e){ME={user:null,login:false};}return ME;}
-function signedIn(){return !!(ME&&ME.user);}
+// Two ways to have an account here: this instance's own session, or a link to the upstream.
+// Only the first was counted, so a linked install kept being told to sign in.
+function signedIn(){return !!(ME&&(ME.user||ME.linked));}
+function whoami(){return ME&&(ME.user||ME.linked)||null;}
 function askSignIn(why){
   if(ME&&!ME.login&&!ME.upstream){alert('Sign-in is not configured on this instance.');return;}
   const d=document.getElementById('signin');if(!d)return;
@@ -610,7 +613,7 @@ async function signOut(){await POST('/api/auth/logout',{});ME.user=null;FAVS=new
 function viewOn(v){const e=document.getElementById('v-'+v);return !!e&&e.classList.contains('on');}
 function paintMe(){
   const w=document.getElementById('who');if(!w)return;
-  if(ME&&ME.linked&&!signedIn()){const u=ME.linked;
+  if(ME&&ME.linked&&!ME.user){const u=ME.linked;
     w.innerHTML=`<button class="whobtn" title="${esc(u.email||'')} · via ${esc(ME.upstream||'')}">`+
       (u.picture?`<img src="${esc(u.picture)}" alt="">`:`<span class="whoin">${esc((u.name||'?')[0])}</span>`)+
       `</button><button class="whoout" id="whoout">Disconnect</button>`;
@@ -1038,15 +1041,14 @@ function renderAddLocalOnly(el){
       `<p>Everything else on this site — browsing, search, and every skill's relation graph — `+
       `works without either.</p>`+
       `<div class="eyebrow">Run it yourself</div>`+
-      `<pre class="localcmd">git clone https://github.com/Jianheng-Liu/SkillFabri
-cd SkillFabri
-python -m venv .venv &amp;&amp; source .venv/bin/activate
+      `<pre class="localcmd">conda create -n skillfabri python=3.11 -y
+conda activate skillfabri
 pip install -r requirements.txt
 
-cp env.sh.example env.sh          <span class="cmt"># put your OPENROUTER_API_KEY in it</span>
-source env.sh
+<span class="cmt"># the vectors that find a new skill's neighbours</span>
+python tools/fetch_data.py --only skill_embeddings.npy
+export OPENROUTER_API_KEY=...
 
-<span class="cmt"># then generate data/skill_embeddings.npy — see the README</span>
 python explorer/app.py --port 8000</pre>`+
       `<div class="lofoot">`+
         `<a class="btn" href="https://github.com/Jianheng-Liu/SkillFabri" target="_blank" rel="noopener" style="width:auto;margin:0">↗ Repository and setup</a>`+

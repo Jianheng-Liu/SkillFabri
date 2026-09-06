@@ -634,6 +634,25 @@ def link_forget():
     return jsonify({"ok": True})
 
 
+def up_call(method, path, payload=None):
+    """Forward a request to the linked account. Returns (json, status) or None if not linked.
+
+    When this install is connected, the account lives upstream — so its saved skills and its
+    favourites do too, and reading them out of the local database would show an empty list
+    that is not the user's.
+    """
+    link = link_read()
+    if not link:
+        return None
+    import requests as rq
+    try:
+        r = rq.request(method, f"{link['upstream']}{path}", timeout=25,
+                       headers={"Authorization": "Bearer " + link["token"]}, json=payload)
+        return r.json(), r.status_code
+    except Exception as e:
+        return {"error": str(e)}, 502
+
+
 @app.post("/api/sync")
 def sync_up():
     """Push a locally placed skill to the connected account."""
@@ -819,6 +838,9 @@ def auth_logout():
 def mine():
     u = need_user()
     if not u:
+        up = up_call("GET", "/api/mine")
+        if up:
+            return jsonify(up[0]), up[1]
         return jsonify({"error": "sign in", "login": auth.enabled()}), 401
     favs = [slim(D["recs"][i]) for i in store.favourites(u["sub"]) if 0 <= i < D["N"]]
     return jsonify({"added": store.added(u["sub"]), "favorites": favs, "user": u})
@@ -843,6 +865,9 @@ def save_skill():
 def remove_added():
     u = need_user()
     if not u:
+        up = up_call("POST", "/api/remove_added", request.get_json(force=True) or {})
+        if up:
+            return jsonify(up[0]), up[1]
         return jsonify({"error": "sign in"}), 401
     # the delete is scoped to the owner, so a row id from another account matches nothing
     ok = store.remove_added(u["sub"], int((request.get_json(force=True) or {}).get("id", -1)))
@@ -853,6 +878,9 @@ def remove_added():
 def fav():
     u = need_user()
     if not u:
+        up = up_call("POST", "/api/fav", request.get_json(force=True) or {})
+        if up:
+            return jsonify(up[0]), up[1]
         return jsonify({"error": "sign in", "login": auth.enabled()}), 401
     i = int((request.get_json(force=True) or {}).get("id", -1))
     if not (0 <= i < D["N"]):

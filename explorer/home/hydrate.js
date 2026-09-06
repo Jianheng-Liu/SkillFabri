@@ -280,7 +280,10 @@
       // second copy of the Google integration and its dialog.
       var who=document.createElement('span');who.className='sf-who';
       fetch('/api/me').then(function(r){return r.json();}).then(function(m){
-        if(!m||!m.login)return;                      // sign-in not configured: show nothing
+        // a local install has no providers of its own and signs in through the upstream,
+        // so `login` alone is the wrong question to ask before offering the button
+        if(!m||!(m.login||m.upstream))return;
+        if(m.linked&&!m.user)m={...m,user:m.linked};
         if(m.user){
           who.innerHTML='<a class="sf-avatar" href="/app#mine" title="'+esc(m.user.email||'')+'">'+
             (m.user.picture?'<img src="'+esc(m.user.picture)+'" alt="">'
