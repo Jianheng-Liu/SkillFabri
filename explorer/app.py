@@ -16,6 +16,7 @@ import argparse, json, os, re, threading, collections
 from pathlib import Path
 import numpy as np
 from flask import Flask, request, jsonify, send_file, redirect
+from urllib.parse import quote
 import sys as _sys
 _sys.path.insert(0, str(Path(__file__).resolve().parent))
 _sys.path.insert(0, str(Path(__file__).resolve().parent.parent))   # `python explorer/app.py` too
@@ -524,14 +525,138 @@ import auth, store
 
 
 def need_user():
-    """The signed-in user, or None. Browsing needs no account; only these routes do."""
+    """The signed-in user, or None. Browsing needs no account; only these routes do.
+
+    A browser sends the session cookie. A local instance syncing on someone's behalf sends a
+    bearer token instead, which is why both are accepted here rather than in each route.
+    """
+    hdr = request.headers.get("Authorization", "")
+    if hdr.startswith("Bearer "):
+        return store.user_for_token(hdr[7:].strip())
     return store.get_user(auth.current_sub())
+
+
+# A synced skill carries neighbour ids, and those are row numbers in skills.json. Sent to an
+# instance holding a different corpus they would name different skills — silently. Both sides
+# compare this before anything moves.
+def corpus_id():
+    import hashlib
+    if "cid" not in D:
+        D["cid"] = hashlib.sha256(
+            (str(D["N"]) + "|" + "|".join(r["name"] for r in D["recs"][:400])).encode()
+        ).hexdigest()[:16]
+    return D["cid"]
+
+
+@app.get("/api/corpus")
+def corpus():
+    return jsonify({"id": corpus_id(), "skills": D["N"]})
+
+
+# A local run borrows skillfabri.com's accounts rather than asking every user to register a
+# Google project and a GitHub app of their own. Set SF_UPSTREAM="" to opt out and use your own.
+UPSTREAM = os.environ.get("SF_UPSTREAM", "https://skillfabri.com").rstrip("/")
+_LINK = ROOT / "data" / "upstream.json"          # token + who it belongs to; gitignored
+
+
+def link_read():
+    try:
+        return json.load(open(_LINK))
+    except Exception:
+        return None
+
+
+def link_write(d):
+    _LINK.parent.mkdir(parents=True, exist_ok=True)
+    with open(_LINK, "w") as f:
+        json.dump(d, f)
+    try:
+        os.chmod(_LINK, 0o600)                   # it is a credential
+    except Exception:
+        pass
+
+
+def is_upstream():
+    """True when this process *is* the service others connect to."""
+    return not UPSTREAM or UPSTREAM.endswith("skillfabri.com") and request.host.endswith("skillfabri.com")
+
+
+@app.get("/auth/cli/callback")
+def cli_callback():
+    """Where the browser lands after signing in upstream. Exchanges the code for a token."""
+    import requests as rq
+    code, state = request.args.get("code", ""), request.args.get("state", "")
+    if not code or state != _LINK_STATE[0]:
+        return "<h3>Sign-in did not complete</h3><p>The state did not match. Close this tab and try again.</p>", 400
+    try:
+        r = rq.post(f"{UPSTREAM}/api/cli/exchange", timeout=20,
+                    json={"code": code, "label": f"local · {os.uname().nodename}"[:60]})
+        d = r.json()
+    except Exception as e:
+        return f"<h3>Could not reach {UPSTREAM}</h3><pre>{esc_html(str(e))}</pre>", 502
+    if not d.get("token"):
+        return f"<h3>Sign-in failed</h3><pre>{esc_html(str(d))}</pre>", 400
+    if d.get("corpus") and d["corpus"] != corpus_id():
+        return ("<h3>Connected, but the corpora differ</h3><p>This install and " + UPSTREAM +
+                " hold different skill sets, so neighbour ids would not line up. "
+                "Sync is disabled.</p>"), 409
+    link_write({"token": d["token"], "user": d["user"], "upstream": UPSTREAM})
+    _LINK_STATE[0] = ""
+    return ("<script>window.close()</script>"
+            "<h3>Connected</h3><p>You can close this tab and return to SkillFabri.</p>")
+
+
+def esc_html(x):
+    return (str(x).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+
+_LINK_STATE = [""]
+
+
+@app.post("/api/link/start")
+def link_start():
+    """Hand the UI the URL to open. The state is kept here and checked on the way back."""
+    import secrets as _s
+    if is_upstream():
+        return jsonify({"error": "this instance is the upstream"}), 400
+    _LINK_STATE[0] = _s.token_urlsafe(16)
+    cb = f"{request.host_url.rstrip('/')}/auth/cli/callback"
+    return jsonify({"url": f"{UPSTREAM}/auth/cli/start?cb={quote(cb, safe='')}"
+                           f"&state={quote(_LINK_STATE[0])}", "upstream": UPSTREAM})
+
+
+@app.post("/api/link/forget")
+def link_forget():
+    try:
+        _LINK.unlink()
+    except Exception:
+        pass
+    return jsonify({"ok": True})
+
+
+@app.post("/api/sync")
+def sync_up():
+    """Push a locally placed skill to the connected account."""
+    import requests as rq
+    link = link_read()
+    if not link:
+        return jsonify({"error": "not connected"}), 401
+    try:
+        r = rq.post(f"{link['upstream']}/api/save", timeout=25,
+                    headers={"Authorization": "Bearer " + link["token"]},
+                    json=request.get_json(force=True) or {})
+        return jsonify({"ok": r.status_code == 200, "status": r.status_code}), 200
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 502
 
 
 @app.get("/api/me")
 def me():
+    link = link_read()
     return jsonify({"user": need_user(), "login": auth.enabled(),
-                    "providers": auth.providers(), "client_id": auth.CLIENT_ID or None})
+                    "providers": auth.providers(), "client_id": auth.CLIENT_ID or None,
+                    "upstream": None if is_upstream() else UPSTREAM,
+                    "linked": link["user"] if link else None})
 
 
 @app.post("/api/auth/google")
@@ -579,6 +704,35 @@ def gh_callback():
     r = redirect("/app#mine")
     r.delete_cookie(auth.STATE_COOKIE, path="/")
     return auth.issue(r, sub)
+
+
+@app.get("/auth/cli/start")
+def cli_start():
+    """Begin connecting a local instance. Sign in here, come back with a code."""
+    cb, state = request.args.get("cb", ""), request.args.get("state", "")
+    if not auth.loopback_ok(cb):
+        return jsonify({"error": "callback must be a loopback URL with a port"}), 400
+    u = need_user()
+    if not u:
+        # bounce through the normal sign-in, then resume exactly here
+        nxt = quote(request.full_path, safe="")
+        return redirect(f"/app#signin&next={nxt}")
+    sep = "&" if "?" in cb else "?"
+    return redirect(f"{cb}{sep}code={quote(auth.cli_code(u['sub']))}&state={quote(state)}")
+
+
+@app.post("/api/cli/exchange")
+def cli_exchange():
+    """Trade the one-time code for a bearer token. Called by the local process, not a browser."""
+    sub = auth.cli_read_code((request.get_json(force=True) or {}).get("code", ""))
+    if not sub:
+        return jsonify({"error": "code is invalid or expired"}), 400
+    u = store.get_user(sub)
+    if not u:
+        return jsonify({"error": "no such user"}), 404
+    label = (request.get_json(force=True) or {}).get("label") or "local instance"
+    return jsonify({"token": store.issue_token(sub, label[:60]), "user": u,
+                    "corpus": corpus_id()})
 
 
 @app.post("/api/auth/logout")
@@ -652,7 +806,11 @@ def graph():
         if j == i or j in rel_ids: continue
         near.append((j, float(sims[j])))
         if len(near) >= budget: break
-    nodeset = [i] + typed_ids + [j for j, _ in near]
+    # dedupe, order-preserving. A pair can be recorded under two types — `same` and
+    # `intersect` on the same edge, for 5,579 pairs — so rel[i] lists that neighbour twice
+    # and it used to be drawn as two nodes. layout() is deterministic, so the twins landed
+    # exactly on top of each other and only showed up when one was dragged away.
+    nodeset = list(dict.fromkeys([i] + typed_ids + [j for j, _ in near]))
     ns = set(nodeset); edges = []; ekey = set()
     for a in nodeset:
         for e in D["rel"][a]:

@@ -66,8 +66,18 @@ def _init(c):
       payload TEXT    NOT NULL,          -- the placed-skill record, as JSON
       created INTEGER NOT NULL);
 
+    -- Tokens a local instance holds on a user's behalf. Only the hash is kept, so a copy of
+    -- this database does not hand over anyone's account — the same reason passwords are hashed.
+    CREATE TABLE IF NOT EXISTS tokens(
+      hash    TEXT PRIMARY KEY,
+      sub     TEXT NOT NULL REFERENCES users(sub) ON DELETE CASCADE,
+      label   TEXT,
+      created INTEGER NOT NULL,
+      used    INTEGER);
+
     CREATE INDEX IF NOT EXISTS fav_by_user   ON favourites(sub, created DESC);
     CREATE INDEX IF NOT EXISTS added_by_user ON added(sub, created DESC);
+    CREATE INDEX IF NOT EXISTS tok_by_user   ON tokens(sub, created DESC);
     """)
     c.commit()
     _namespace_subjects(c)
@@ -182,3 +192,47 @@ def stats():
     return {"users": q("SELECT COUNT(*) FROM users"),
             "favourites": q("SELECT COUNT(*) FROM favourites"),
             "added": q("SELECT COUNT(*) FROM added")}
+
+
+# ---------- tokens issued to a local instance ----------
+def _h(tok: str) -> str:
+    import hashlib
+    return hashlib.sha256(tok.encode()).hexdigest()
+
+
+def issue_token(sub, label=None) -> str:
+    """Mint a bearer token for this user. The plaintext is returned once and never stored."""
+    import secrets
+    tok = "sf_" + secrets.token_urlsafe(36)
+    with _LOCK:
+        c = _conn()
+        c.execute("INSERT INTO tokens(hash,sub,label,created,used) VALUES(?,?,?,?,NULL)",
+                  (_h(tok), sub, label, now()))
+        c.commit()
+    return tok
+
+
+def user_for_token(tok):
+    if not tok:
+        return None
+    c = _conn()
+    r = c.execute("SELECT sub FROM tokens WHERE hash=?", (_h(tok),)).fetchone()
+    if not r:
+        return None
+    with _LOCK:
+        c.execute("UPDATE tokens SET used=? WHERE hash=?", (now(), _h(tok)))
+        c.commit()
+    return get_user(r["sub"])
+
+
+def tokens_for(sub):
+    return [dict(r) for r in _conn().execute(
+        "SELECT label,created,used FROM tokens WHERE sub=? ORDER BY created DESC", (sub,))]
+
+
+def revoke_tokens(sub) -> int:
+    with _LOCK:
+        c = _conn()
+        n = c.execute("DELETE FROM tokens WHERE sub=?", (sub,)).rowcount
+        c.commit()
+    return n

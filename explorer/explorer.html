@@ -59,6 +59,8 @@ header{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--panel
 .navtgl:hover,.navtgl[aria-expanded=true]{color:var(--accent);border-color:var(--accent)}
 @media(max-width:680px){
   .bar{gap:12px;padding:0 14px}
+  .bartools{gap:7px}                        /* matches the landing page at this width */
+  .themetgl{width:28px;height:28px}
   .navtgl{display:grid}
   nav{position:absolute;top:calc(var(--hh) - 5px);left:12px;right:12px;z-index:60;
     display:none;flex-direction:column;align-items:stretch;gap:2px;
@@ -87,7 +89,8 @@ nav button.on{color:var(--accent)}
   background:rgba(8,10,16,.55);padding:22px;backdrop-filter:blur(3px)}
 #signin.on{display:flex}
 .who{display:inline-flex;align-items:center;gap:9px;flex:none;order:2}
-.themetgl{margin-left:auto}                 /* pushes the pair to the edge; .who then sits last */
+/* the pair travels together at the landing page's 9px, not the bar's 32px nav gap */
+.bartools{margin-left:auto;display:flex;align-items:center;gap:9px;flex:none}
 .whobtn{width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--panel);
   cursor:pointer;padding:0;overflow:hidden;display:grid;place-items:center;color:var(--ink2);
   transition:border-color .15s}
@@ -105,6 +108,8 @@ nav button.on{color:var(--accent)}
   background:#24292F;color:#fff;text-decoration:none;
   font-family:var(--sans);font-size:14px;font-weight:500;transition:filter .15s}
 .ghbtn:hover{filter:brightness(1.25)}
+.upbtn{background:var(--accent);border:0;cursor:pointer;font:inherit;font-size:14px;font-weight:500}
+.upbtn:hover{filter:brightness(1.1)}
 :root[data-theme=dark] .ghbtn{background:#30363D}
 .whoout{background:none;border:0;color:var(--muted);cursor:pointer;font-family:var(--sans);
   font-size:12px;padding:0;transition:color .15s}
@@ -477,8 +482,10 @@ catch(e){document.documentElement.setAttribute('data-theme','dark');}})();
       <button data-v="add">Add My Skill</button>
       <button data-v="mine">My Skills</button>
     </nav>
-    <button class="themetgl" id="theme" title="Light / dark">☾</button>
-    <span class="who" id="who"></span>
+    <div class="bartools">
+      <button class="themetgl" id="theme" title="Light / dark">☾</button>
+      <span class="who" id="who"></span>
+    </div>
   </div>
 </header>
 <main>
@@ -497,6 +504,16 @@ catch(e){document.documentElement.setAttribute('data-theme','dark');}})();
     <div class="imbody" style="text-align:center;padding-top:4px">
       <p class="lede" id="signinwhy" style="margin:0 0 20px"></p>
       <div class="prov">
+      <div id="upwrap" style="display:none">
+        <button class="ghbtn upbtn" id="upbtn">
+          <svg viewBox="0 0 38 38" width="17" height="17" fill="none">
+            <line x1="2" y1="19" x2="12" y2="19" stroke="#14B8A6" stroke-width="3.4" stroke-linecap="round"/>
+            <line x1="26" y1="19" x2="36" y2="19" stroke="#14B8A6" stroke-width="3.4" stroke-linecap="round"/>
+            <line x1="19" y1="2" x2="19" y2="36" stroke="#8FA0F5" stroke-width="3.4" stroke-linecap="round"/>
+            <circle cx="19" cy="19" r="6" fill="#fff"/></svg>
+          Continue with skillfabri.com</button>
+        <p class="hint" id="uphint" style="margin:12px 2px 0;text-align:left"></p>
+      </div>
       <div id="gbtn"></div>
       <div id="ghwrap">
         <a class="ghbtn" href="/auth/github/start">
@@ -537,9 +554,16 @@ function askSignIn(why){
   if(ME&&!ME.login){alert('Sign-in is not configured on this instance.');return;}
   const d=document.getElementById('signin');if(!d)return;
   document.getElementById('signinwhy').textContent=why||'Sign in to keep your own list.';
-  const P=(ME&&ME.providers)||{};
+  const P=(ME&&ME.providers)||{},up=ME&&ME.upstream;
+  // A local install borrows the hosted accounts rather than making every user register a
+  // Google project and a GitHub app. Its own providers still work if configured.
+  document.getElementById('upwrap').style.display=up?'block':'none';
+  if(up)document.getElementById('uphint').textContent=
+    'Signs you in at ' + up.replace(/^https?:\/\//,'') + ' in a new window. '
+    + 'Skills you place here then sync to that account.';
   document.getElementById('ghwrap').style.display=P.github?'block':'none';
   document.getElementById('gbtn').style.display=P.google?'flex':'none';
+  const ub=document.getElementById('upbtn');if(ub)ub.onclick=linkUpstream;
   d.classList.add('on');if(P.google)mountGoogle();}
 function closeSignIn(){const d=document.getElementById('signin');if(d)d.classList.remove('on');}
 // Google's script is only fetched once somebody actually tries to sign in, so a visitor who
@@ -568,11 +592,31 @@ function mountGoogle(){
   _gsi.onerror=()=>{_gsi=null;host.innerHTML='<span class="hint">Google sign-in could not be '+
     'reached. Continue with GitHub, or try again.</span>';};
   document.head.appendChild(_gsi);}
+// the popup does the signing in; this side just waits for the link to appear
+async function linkUpstream(){
+  const r=await POST('/api/link/start',{});
+  if(!r||!r.url){alert('Could not start sign-in.');return;}
+  const w=window.open(r.url,'sf-signin','width=520,height=700');
+  const t0=Date.now();
+  const poll=setInterval(async()=>{
+    const m=await API('/api/me').catch(()=>null);
+    if(m&&m.linked){clearInterval(poll);ME=m;closeSignIn();paintMe();
+      if(w&&!w.closed)try{w.close();}catch(e){}
+      if(viewOn('mine'))renderMine();return;}
+    if(Date.now()-t0>180000||(w&&w.closed&&Date.now()-t0>2000)){clearInterval(poll);}
+  },1200);}
 async function signOut(){await POST('/api/auth/logout',{});ME.user=null;FAVS=new Set();
   paintMe();if(viewOn('mine'))renderMine();if(viewOn('browse'))loadList();}
 function viewOn(v){const e=document.getElementById('v-'+v);return !!e&&e.classList.contains('on');}
 function paintMe(){
   const w=document.getElementById('who');if(!w)return;
+  if(ME&&ME.linked&&!signedIn()){const u=ME.linked;
+    w.innerHTML=`<button class="whobtn" title="${esc(u.email||'')} · via ${esc(ME.upstream||'')}">`+
+      (u.picture?`<img src="${esc(u.picture)}" alt="">`:`<span class="whoin">${esc((u.name||'?')[0])}</span>`)+
+      `</button><button class="whoout" id="whoout">Disconnect</button>`;
+    document.getElementById('whoout').onclick=async()=>{await POST('/api/link/forget',{});
+      ME=await loadMe();paintMe();if(viewOn('mine'))renderMine();};
+    return;}
   if(signedIn()){const u=ME.user;
     w.innerHTML=`<button class="whobtn" id="whobtn" title="${esc(u.email||'')}">`+
       (u.picture?`<img src="${esc(u.picture)}" alt="">`:`<span class="whoin">${esc((u.name||'?')[0])}</span>`)+
@@ -1286,9 +1330,18 @@ function renderPlacement(r){const res=document.getElementById('a-res');const nm=
   document.getElementById('openfull').onclick=openPlacedFull;
   // a skill you placed is yours — it lands in My Skills without asking
   (async()=>{try{
-    await POST('/api/save',{name:nm,summary:(L&&L.summary)||'',steps:(L&&L.steps)||[],tech:(L&&L.tech)||[],
+    const rec={name:nm,summary:(L&&L.summary)||'',steps:(L&&L.steps)||[],tech:(L&&L.tech)||[],
       activity:r.suggested_activity,capability:r.suggested_capability,labels:L,
-      neighbours:r.neighbours,neigh_edges:r.neigh_edges,ts:Date.now()});
+      neighbours:r.neighbours,neigh_edges:r.neigh_edges,ts:Date.now()};
+    // linked to an upstream: the skill belongs to that account, so it goes straight there and
+    // is on every other device you sign in from. Otherwise it stays in this instance.
+    if(ME&&ME.linked){const u=await POST('/api/sync',rec);
+      const t=document.getElementById('savedmsg');
+      if(t)t.innerHTML=u&&u.ok?`✓ Synced to <b>${esc(ME.linked.email||'your account')}</b>`
+                              :'⚠ Saved locally — sync failed';
+      if(!(u&&u.ok))await POST('/api/save',rec);
+      return;}
+    await POST('/api/save',rec);
     const t=document.getElementById('savedmsg');
     if(t)t.innerHTML='✓ Saved to <b>My Skills</b>';
   }catch(_){}})();}

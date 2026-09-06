@@ -149,3 +149,41 @@ def gh_exchange(code: str, redirect_uri: str):
         return (str(u["id"]), email, u.get("name") or u.get("login"), u.get("avatar_url"))
     except Exception:
         return None
+
+
+# ---------- connecting a local instance to this one ----------
+# A local install should not need its own Google project and GitHub app just to have an account.
+# It borrows this deployment's: the browser is sent here to sign in, and comes back to a
+# loopback URL carrying a short-lived code that the local process exchanges for a token. That
+# is the flow `gh auth login` and `fly auth login` use, for the same reason.
+_code = URLSafeTimedSerializer(_SECRET, salt="sf-cli-code")
+CODE_MAX_AGE = 300          # five minutes between the redirect and the exchange
+
+
+def cli_code(sub: str) -> str:
+    return _code.dumps(sub)
+
+
+def cli_read_code(code: str):
+    try:
+        return _code.loads(code, max_age=CODE_MAX_AGE)
+    except (BadSignature, SignatureExpired):
+        return None
+
+
+def loopback_ok(cb: str) -> bool:
+    """Only ever redirect a code to the machine the user is sitting at.
+
+    This is the one control that matters in the whole flow. `cb` arrives as a query parameter,
+    so without it anyone could send a victim to /auth/cli/start?cb=https://theirs.example and
+    collect a code good for that victim's account.
+    """
+    from urllib.parse import urlparse
+    try:
+        u = urlparse(cb)
+    except Exception:
+        return False
+    return (u.scheme == "http"
+            and u.hostname in ("127.0.0.1", "localhost", "::1")
+            and bool(u.port)
+            and not u.query and not u.fragment)

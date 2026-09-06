@@ -36,15 +36,26 @@ python explorer/app.py --port 8000
 That is enough for the whole site: browse by any dimension, full-text search, and every skill's
 interactive relation graph. No key, no account, no extra files.
 
-## Sign in, and keep your own skills
+## Sign in
 
-Two things are gated behind an account, because both produce something that has to belong to
-somebody: saving a skill from the market, and adding one of your own.
+Click **Sign in → Continue with skillfabri.com**. A window opens, you sign in there with Google
+or GitHub, it closes, and this instance is connected. Nothing to configure.
 
-```bash
-cp env.sh.example env.sh     # fill in the values below
-source env.sh
-```
+It borrows the hosted deployment's accounts rather than asking you to register a Google Cloud
+project and a GitHub OAuth app of your own — the same loopback flow `gh auth login` uses. The
+browser comes back to `http://localhost:<port>` carrying a short-lived code, which this process
+trades for a token; the token is stored in `data/upstream.json` (mode 600, gitignored) and only
+its hash is kept on the server.
+
+Once connected, **a skill you place here is saved to that account**, so it is there when you
+sign in from anywhere else. Both sides compare a corpus fingerprint first: neighbour ids are
+row numbers in `skills.json`, so syncing between installs holding different skill sets would
+quietly point at the wrong skills. Mismatched, sync refuses rather than corrupting the account.
+
+<details><summary>Or run your own accounts, with no upstream at all</summary>
+
+Set `SF_UPSTREAM=""` and configure a provider yourself. Accounts then live only in
+`data/user.db` on your machine and nothing leaves it.
 
 | setting | what it is for |
 |---|---|
@@ -52,11 +63,9 @@ source env.sh
 | `SF_GOOGLE_CLIENT_ID` | [Google Cloud console](https://console.cloud.google.com/apis/credentials) → OAuth client ID → **Web application**. Add `http://localhost:8000` to *Authorized JavaScript origins*; leave redirect URIs empty. |
 | `SF_GITHUB_CLIENT_ID` / `_SECRET` | [GitHub developer settings](https://github.com/settings/developers) → New OAuth App. Callback URL `http://localhost:8000/auth/github/callback`. |
 
-Either provider alone is enough. Configure neither and the app says sign-in is unavailable
-rather than offering a button that cannot work.
+Either provider alone is enough.
 
-Accounts, saved skills and your own uploads live in `data/user.db`, a SQLite file this app
-creates. It is gitignored. It never leaves your machine.
+</details>
 
 ## The embeddings
 
@@ -113,7 +122,7 @@ export OPENROUTER_API_KEY=...
 ```
 
 Restart the server and **Add My Skill** becomes available. Paste or drop a `SKILL.md` and it is
-labelled, placed, and saved to your account.
+labelled, placed, and — if you are connected — synced to your account.
 
 > This is the reason to run it locally. The public site ships without the embeddings and without
 > a key — on a public deployment every visitor would be spending the owner's money — so it shows

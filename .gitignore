@@ -20,3 +20,6 @@ venv/
 
 # os
 .DS_Store
+
+# the token this instance holds for your account
+data/upstream.json
