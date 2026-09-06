@@ -680,6 +680,14 @@ def gh_redirect_uri():
     return f"{proto}://{request.host}/auth/github/callback"
 
 
+NEXT_COOKIE = "sf_after_auth"
+
+
+def safe_next(v):
+    """Only ever resume at a path on this site. `next` is attacker-supplied."""
+    return v if (v or "").startswith("/") and not (v or "").startswith("//") else None
+
+
 @app.get("/auth/github/start")
 def gh_start():
     if not auth.providers()["github"]:
@@ -688,6 +696,10 @@ def gh_start():
     r = redirect(url)
     r.set_cookie(auth.STATE_COOKIE, state, max_age=600, httponly=True,
                  samesite="Lax", secure=request.is_secure, path="/")
+    nxt = safe_next(request.args.get("next"))
+    if nxt:
+        r.set_cookie(NEXT_COOKIE, nxt, max_age=600, httponly=True,
+                     samesite="Lax", secure=request.is_secure, path="/")
     return r
 
 
@@ -701,9 +713,60 @@ def gh_callback():
     gid, email, name, avatar = prof
     sub = "github:" + gid
     store.upsert_user(sub, email, name, avatar)
-    r = redirect("/app#mine")
+    r = redirect(safe_next(request.cookies.get(NEXT_COOKIE)) or "/app#mine")
     r.delete_cookie(auth.STATE_COOKIE, path="/")
+    r.delete_cookie(NEXT_COOKIE, path="/")
     return auth.issue(r, sub)
+
+
+# A popup 520px wide should not be the whole explorer. This page is the sign-in card and
+# nothing else: no corpus, no nav, no graph, and no explorer.html.
+CONNECT_PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in &middot; SkillFabri</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+:root{color-scheme:dark;--bg:#17171C;--card:#212128;--ink:#ECECF2;--ink2:#A9A9B4;
+ --muted:#7A7A86;--line:rgba(255,255,255,.09);--accent:#7A8DF2}
+@media(prefers-color-scheme:light){:root{color-scheme:light;--bg:#F8F7F1;--card:#fff;
+ --ink:#141414;--ink2:#4D4D4D;--muted:#9A9A9A;--line:rgba(0,0,0,.08);--accent:#2847E0}}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);
+ color:var(--ink);font-family:Inter,-apple-system,system-ui,sans-serif;padding:22px}
+.card{width:100%;max-width:380px;background:var(--card);border:1px solid var(--line);
+ border-radius:16px;padding:26px 26px 22px;text-align:center}
+h1{font-size:19px;font-weight:800;letter-spacing:-.02em;margin:0 0 6px}
+.lede{color:var(--ink2);font-size:14px;line-height:1.55;margin:0 0 20px}
+.prov{display:flex;flex-direction:column;align-items:center;gap:10px}
+.gh{display:flex;align-items:center;justify-content:center;gap:10px;width:280px;height:40px;
+ border-radius:20px;background:#24292F;color:#fff;text-decoration:none;font-size:14px;font-weight:500}
+@media(prefers-color-scheme:dark){.gh{background:#30363D}}
+.gh:hover{filter:brightness(1.25)}
+.hint{color:var(--muted);font-size:11.5px;line-height:1.6;margin:18px 0 0}
+.who{margin-top:14px;font-size:13px;color:var(--ink2)}
+</style></head><body><div class="card">
+<h1>Sign in</h1>
+<p class="lede">__WHY__</p>
+<div class="prov">
+  <div id="g"></div>
+  __GH__
+</div>
+<p class="hint">Name, email and avatar only. Connecting lets skills you place on your machine
+ be saved to this account.</p>
+</div>
+<script>
+const CID=__CID__;
+function done(){location.reload();}
+if(CID){const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';
+ s.async=s.defer=true;s.onload=()=>{google.accounts.id.initialize({client_id:CID,callback:async r=>{
+   const q=await fetch('/api/auth/google',{method:'POST',headers:{'Content-Type':'application/json'},
+     body:JSON.stringify({credential:r.credential})});
+   if(q.ok)done();else alert('Sign-in failed.');}});
+  google.accounts.id.renderButton(document.getElementById('g'),
+   {theme:matchMedia('(prefers-color-scheme: dark)').matches?'filled_black':'outline',
+    size:'large',shape:'pill',text:'continue_with',width:280});};
+ document.head.appendChild(s);}
+</script></body></html>"""
 
 
 @app.get("/auth/cli/start")
@@ -714,9 +777,21 @@ def cli_start():
         return jsonify({"error": "callback must be a loopback URL with a port"}), 400
     u = need_user()
     if not u:
-        # bounce through the normal sign-in, then resume exactly here
-        nxt = quote(request.full_path, safe="")
-        return redirect(f"/app#signin&next={nxt}")
+        here = request.full_path
+        gh = (f'<a class="gh" href="/auth/github/start?next={quote(here, safe="")}">'
+              '<svg viewBox="0 0 16 16" width="17" height="17" fill="currentColor">'
+              '<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 '
+              '0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 '
+              '1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 '
+              '0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.42 7.42 0 0 1 2-.27c.68 0 1.36.09 '
+              '2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 '
+              '3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>'
+              '</svg>Continue with GitHub</a>') if auth.providers()["github"] else ""
+        page = (CONNECT_PAGE
+                .replace("__WHY__", "Connect this browser to your SkillFabri account.")
+                .replace("__GH__", gh)
+                .replace("__CID__", json.dumps(auth.CLIENT_ID or "")))
+        return app.response_class(page, mimetype="text/html")
     sep = "&" if "?" in cb else "?"
     return redirect(f"{cb}{sep}code={quote(auth.cli_code(u['sub']))}&state={quote(state)}")
 
