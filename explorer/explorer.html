@@ -545,7 +545,7 @@ function capPalette(nodes){const caps=[...new Set(nodes.map(n=>n.capability).fil
 /* one icon set for the whole product — /icons.js is shared with the landing page */
 function actIcon(a,size){const d=(window.SF_ICONS||{})[a]||window.SF_ICON_FALLBACK||'';
   return d?`<svg viewBox="0 0 20 20" fill="none" width="${size||15}" height="${size||15}" style="flex:none">${d}</svg>`:'';}
-let DIMS=null,FAVS=new Set(),ME=null;
+let DIMS=null,FAVS=new Set(),ME=null,MINE={added:[],favorites:[]};
 // Browsing needs no account. Saving does, because a favourite has to belong to somebody —
 // before this it belonged to the server, which meant every visitor shared one list.
 async function loadMe(){try{ME=await API('/api/me');}catch(e){ME={user:null,login:false};}return ME;}
@@ -1126,7 +1126,23 @@ function closeDrawer(){document.getElementById('drawer').classList.remove('on');
 document.getElementById('scrim').onclick=closeDrawer;
 async function showFullInfo(id,anchor){
   const q='/api/full?id='+id+(anchor!=null&&anchor>=0?'&anchor='+anchor:'');
-  const s=await API(q);const im=document.getElementById('infomodal');
+  renderFullInfo(await API(q),{open:`openSkill(${id})`});}
+
+// A skill you placed yourself has no row in the corpus, so there is nothing to fetch. It
+// carries the same fields though, and deserves the same card, so the renderer takes a record
+// and the two callers differ only in where the record came from.
+function showAddedInfo(i){
+  const r=(MINE.added||[])[i];if(!r)return;
+  const L=r.labels||{},counts={};
+  (r.neighbours||[]).forEach(x=>{if(x.type)counts[x.type]=(counts[x.type]||0)+1;});
+  renderFullInfo({
+    name:r.name,summary:r.summary,steps:r.steps,activity:r.activity,capability:r.capability,
+    object:r.object,tech:r.tech,concern:L.concern,domain:L.domain,tools:L.tools,
+    input:L.input,output:L.output,produces:L.produces,authority:L.authority,subject:L.subject,
+    counts:counts,author:'you'},{open:`showAdded(MINE.added[${i}])`});}
+
+function renderFullInfo(s,opts){
+  opts=opts||{};const im=document.getElementById('infomodal');
   const chips=a=>(a&&a.length)?a.map(x=>`<span class="tag">${esc(x)}</span>`).join(''):'';
   const hls=(s.hlsteps||[]);
   // The card used to be nineteen equal rows, so nothing led. It is now ordered by what a reader
@@ -1174,7 +1190,7 @@ async function showFullInfo(id,anchor){
       `</div>`+
       `<div class="imfoot">`+
         (s.url?`<a class="imsrc" href="${esc(s.url)}" target="_blank" rel="noopener">↗ View source</a>`:'')+
-        `<button class="btn" style="width:auto;margin:0" onclick="closeInfo();openSkill(${id})">◈ Open graph →</button>`+
+        `<button class="btn" style="width:auto;margin:0" onclick="closeInfo();${opts.open}">◈ Open graph →</button>`+
       `</div>`+
     `</div>`;
   im.classList.add('on');}
@@ -1382,13 +1398,14 @@ async function renderMine(){const el=document.getElementById('v-mine');el.innerH
       `<button class="lobrowse" onclick="show('browse')">Browse the graph instead →</button>`+
       `</div></div>`;
     return;}
-  const m=await API('/api/mine');FAVS=new Set(m.favorites.map(s=>s.id));
+  const m=await API('/api/mine');MINE=m;FAVS=new Set(m.favorites.map(s=>s.id));
   el.innerHTML=`<h1>My Skills</h1><p class="lede">Skills you saved from the market, and skills you added yourself.</p>`+
     `<div class="eyebrow">Added by you · ${m.added.length}</div><div class="grid" id="mineadd"></div>`+
     `<div class="eyebrow">Favourites · ${m.favorites.length}</div><div class="grid" id="minefav"></div>`;
   const add=document.getElementById('mineadd');
   add.innerHTML=m.added.length?m.added.map((s,i)=>`<div class="card" data-i="${i}"><button class="favb on" data-del="${s._id}" title="Remove">✕</button><div class="top"><span class="nm">${esc(s.name)}</span></div><div class="sum">${esc(s.summary)}</div><div class="meta"><span class="tag act" style="background:${actCol(s.activity)}">${esc(s.activity)}</span><span class="tag cap">${esc(s.capability)}</span><span class="tag">${(s.neighbours||[]).length} relations</span></div></div>`).join(''):'<div class="empty" style="grid-column:1/-1">Nothing yet — go to <b>Add My Skill</b> and save one.</div>';
-  add.querySelectorAll('.card').forEach(c=>c.onclick=e=>{if(e.target.closest('[data-del]'))return;showAdded(m.added[+c.dataset.i]);});
+  add.querySelectorAll('.card').forEach(c=>c.onclick=e=>{if(e.target.closest('[data-del]'))return;
+    showAddedInfo(+c.dataset.i);});   // the card opens the card, as it does everywhere else
   add.querySelectorAll('[data-del]').forEach(b=>b.onclick=async e=>{e.stopPropagation();
     await POST('/api/remove_added',{id:+b.dataset.del});renderMine();});
   const fav=document.getElementById('minefav');fav.innerHTML=m.favorites.length?m.favorites.map(cardHTML).join(''):'<div class="empty" style="grid-column:1/-1">No favourites — tap ♡ on any skill.</div>';wireCards(fav);}
