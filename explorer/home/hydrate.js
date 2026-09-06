@@ -252,7 +252,7 @@
         try{localStorage.setItem('sf-theme',t);}catch(e){}
         location.reload();};   // the bundle read its palette once, at load
       var gh=document.createElement('a');gh.className='sf-gh';gh.title='Source on GitHub';
-      gh.href='https://github.com/Jianheng-Liu/SkillFabri';gh.target='_blank';gh.rel='noopener';
+      gh.href='https://github.com/Jianheng-Liu/skillfabri-local';gh.target='_blank';gh.rel='noopener';
       gh.innerHTML=GH_MARK;
       // the pair hangs off <body>, not off the nav: the nav is React-owned and the next render
       // discards anything appended into it. .sf-tools re-creates the header's own container
