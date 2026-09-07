@@ -341,9 +341,39 @@
         if(!m||!(m.login||m.upstream))return;
         if(m.linked&&!m.user)m={...m,user:m.linked};
         if(m.user){
-          who.innerHTML='<a class="sf-avatar" href="/app#mine" title="'+esc(m.user.email||'')+'">'+
-            (m.user.picture?'<img src="'+esc(m.user.picture)+'" alt="">'
-                           :'<span>'+esc((m.user.name||'?')[0])+'</span>')+'</a>';
+          // the avatar opens the account, it does not navigate: a click that both leaves the
+          // page and reveals a menu is a click you cannot take back
+          var linked=!!(m.linked&&m.upstream);
+          who.innerHTML=
+            '<button class="sf-avatar" id="sfav" aria-haspopup="menu" aria-expanded="false" title="'+
+              esc(m.user.email||'')+'">'+
+              (m.user.picture?'<img src="'+esc(m.user.picture)+'" alt="">'
+                             :'<span>'+esc((m.user.name||'?')[0])+'</span>')+
+            '</button>'+
+            '<div class="sf-amenu" id="sfamenu" role="menu">'+
+              '<div class="sf-ahead"><div class="sf-anm">'+esc(m.user.name||'Signed in')+'</div>'+
+                '<div class="sf-aem">'+esc(m.user.email||'')+'</div>'+
+                (linked?'<div class="sf-avia">via '+esc(String(m.upstream).replace(/^https?:\/\//,''))+'</div>':'')+
+              '</div>'+
+              '<a class="sf-aitem" role="menuitem" href="/app#mine">My Skills</a>'+
+              '<button class="sf-aitem danger" id="sfaout" role="menuitem">'+
+                (linked?'Disconnect':'Sign out')+'</button>'+
+            '</div>';
+          var av=document.getElementById('sfav'), am=document.getElementById('sfamenu');
+          if(av&&am){
+            var shut=function(){am.classList.remove('on');av.setAttribute('aria-expanded','false');};
+            av.onclick=function(e){e.stopPropagation();
+              var on=!am.classList.contains('on');
+              am.classList.toggle('on',on);av.setAttribute('aria-expanded',String(on));};
+            document.addEventListener('click',function(e){
+              if(!am.contains(e.target)&&e.target!==av)shut();});
+            document.addEventListener('keydown',function(e){if(e.key==='Escape')shut();});
+            var out=document.getElementById('sfaout');
+            if(out)out.onclick=function(){
+              fetch(linked?'/api/link/forget':'/api/auth/logout',
+                {method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})
+                .then(function(){location.reload();});};
+          }
         } else {
           who.innerHTML='<a class="sf-signin" href="/app#signin">Sign in</a>';
         }
