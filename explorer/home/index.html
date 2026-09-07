@@ -77,6 +77,20 @@
      234px for about 242px of text, so the last two links fall off the edge. Shrinking the type
      only moves that cliff. The nav takes its own row instead, which gives it the full width —
      343px at 375px, comfortably more than it needs — and stops depending on the estimate. */
+  /* Scroll reveal. The class is only ever added by script, so with no JS every section is
+     simply visible: an element hidden at rest that waits for code to show it is a blank page
+     the moment that code does not run. */
+  .sf-rise{opacity:0;transform:translateY(20px);
+    transition:opacity .6s cubic-bezier(.16,1,.3,1),transform .6s cubic-bezier(.16,1,.3,1)}
+  .sf-rise.sf-in{opacity:1;transform:none}
+  /* how far through the page you are, in one hairline */
+  .sf-prog{position:fixed;top:0;left:0;height:2px;width:100%;transform-origin:0 50%;
+    transform:scaleX(0);background:var(--sf-primary);z-index:100;pointer-events:none;
+    transition:transform .1s linear,opacity .3s}
+  @media (prefers-reduced-motion:reduce){
+    .sf-rise{opacity:1 !important;transform:none !important;transition:none !important}
+    .sf-prog{display:none}
+  }
   .sf-who{display:inline-flex;align-items:center;flex:none}
   .sf-signin{display:inline-flex;align-items:center;height:32px;padding:0 15px;border-radius:9px;
     background:var(--sf-primary);color:#fff;text-decoration:none;white-space:nowrap;

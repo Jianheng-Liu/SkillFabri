@@ -109,6 +109,62 @@
     });
   }
 
+  /* ── scroll reveal ────────────────────────────────────────────────────────
+   * The design animates its hero and then stops, so everything past the first
+   * screen simply exists when you arrive at it. These sections rise as they come
+   * into view. Applied from script only, and with a failsafe: content that hides
+   * itself waiting for JS is a blank page whenever the JS does not arrive. */
+  var revealed = null;
+  function startReveal() {
+    if (revealed) return;
+    if (!('IntersectionObserver' in window)) return;      // leave everything visible
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    revealed = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        e.target.classList.add('sf-in');
+        revealed.unobserve(e.target);                      // reveal once, not on every pass
+      });
+    }, { rootMargin: '0px 0px -12% 0px', threshold: 0.05 });
+    arm();
+    // the featured grid is rewritten when a chip is clicked, so new cards need arming too
+    setInterval(arm, 1200);
+    // whatever the observer has not reached after ten seconds is shown regardless
+    setTimeout(function () {
+      [].forEach.call(document.querySelectorAll('.sf-rise'), function (n) { n.classList.add('sf-in'); });
+    }, 10000);
+  }
+  function arm() {
+    var fold = window.innerHeight;
+    var els = document.querySelectorAll('section, .grid > div, footer > div');
+    [].forEach.call(els, function (n, i) {
+      if (n.classList.contains('sf-rise')) return;
+      if (n.getBoundingClientRect().top < fold * 0.9) return;   // already on screen: no reveal
+      n.classList.add('sf-rise');
+      n.style.transitionDelay = ((i % 6) * 45) + 'ms';
+      revealed.observe(n);
+    });
+  }
+
+  /* a hairline of reading progress; cheap enough to run on every scroll frame */
+  function startProgress() {
+    if (document.querySelector('.sf-prog')) return;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var bar = document.createElement('div');
+    bar.className = 'sf-prog';
+    document.body.appendChild(bar);
+    var tick = false;
+    addEventListener('scroll', function () {
+      if (tick) return;
+      tick = true;
+      requestAnimationFrame(function () {
+        var h = document.documentElement.scrollHeight - innerHeight;
+        bar.style.transform = 'scaleX(' + (h > 0 ? Math.min(1, scrollY / h) : 0) + ')';
+        tick = false;
+      });
+    }, { passive: true });
+  }
+
   function wireChips() {
     var chips = byText('button', /^(trending|newest)$/);
     chips.forEach(function (c) {
@@ -298,6 +354,8 @@
       document.body.appendChild(tools);document.body.appendChild(menu);
     }
     wireChips();
+    startReveal();
+    startProgress();
     var dtries = 0;
     (function armDrag(){ if (makeDraggable() || ++dtries > 40) return; setTimeout(armDrag, 150); })();
     loadFeatured('trending');
