@@ -154,11 +154,17 @@ def load(graph_file="relations.json"):
             out[x] = seen
         return out
     desc, anc = closure(narrower), closure(broader)
-    # counts shown as badges on every card, so the graph is visible without opening a skill
+    # Counts shown as badges on every card, so the graph is visible without opening a skill.
+    # `same` counts this skill's own edges, not its cluster. The cluster is a transitive closure,
+    # and near-duplicate is not transitive: in a star, the three spokes were each judged against
+    # the hub and never against each other, so reporting a cluster of four as "3 duplicates" on a
+    # spoke asserts two comparisons nobody made — and the card then disagreed with the graph and
+    # the relation list it opens, which both show edges. Cluster size is still a real quantity;
+    # it belongs to /api/cluster and the redundancy view, which say so.
     badge = []
     for i in range(N):
         c = collections.Counter(e["type"] for e in rel[i])
-        badge.append({"same": len(same_cluster[i]) - 1, "intersect": c["intersect"], "contain": c["contain"]})
+        badge.append({"same": c["same"], "intersect": c["intersect"], "contain": c["contain"]})
     # redundancy per repo: how much of a publisher's own catalogue duplicates itself
     byrepo = collections.defaultdict(list)
     for i, nd in enumerate(nodes):
