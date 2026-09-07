@@ -16,6 +16,10 @@
   --mono:'JetBrains Mono',ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   --sans:'Inter',ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   --display:'Bricolage Grotesque',var(--sans);
+  /* One motion vocabulary. The spring is what makes a panel feel placed rather than moved;
+     the plain ease is for colour and opacity, where overshoot would look like a glitch. */
+  --ease:cubic-bezier(.32,.72,0,1);
+  --ease-out:cubic-bezier(.16,1,.3,1);
   --hh:56px;                                  /* header height — #skillpage and .rail derive from it */
   --esame:#D2703A;--einter:#2F8E80;--econtain:#5566C0;
   --nfill:0.24;--nfillc:0.40;--nhalo:0.12;--nstroke:1;
@@ -111,10 +115,75 @@ nav button.on{color:var(--accent)}
 .upbtn{background:var(--accent);border:0;cursor:pointer;font:inherit;font-size:14px;font-weight:500}
 .upbtn:hover{filter:brightness(1.1)}
 :root[data-theme=dark] .ghbtn{background:#30363D}
-.whoout{background:none;border:0;color:var(--muted);cursor:pointer;font-family:var(--sans);
-  font-size:12px;padding:0;transition:color .15s}
-.whoout:hover{color:var(--accent)}
-@media(max-width:680px){.whoout{display:none}}
+.who{position:relative}
+.whomenu{position:absolute;top:calc(100% + 9px);right:0;z-index:80;min-width:212px;
+  background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:6px;
+  box-shadow:0 16px 40px rgba(0,0,0,.22);opacity:0;transform:translateY(-6px) scale(.97);
+  pointer-events:none;transition:opacity .16s var(--ease),transform .16s var(--ease)}
+.whomenu.on{opacity:1;transform:none;pointer-events:auto}
+.whohead{padding:9px 11px 10px;border-bottom:1px solid var(--line2);margin-bottom:5px}
+.whonm{font-size:13.5px;font-weight:600;line-height:1.3}
+.whoem{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis}
+.whovia{font-family:var(--mono);font-size:10px;color:var(--muted);opacity:.75;margin-top:3px}
+.whoitem{display:block;width:100%;text-align:left;background:none;border:0;cursor:pointer;
+  font-family:var(--sans);font-size:13.5px;color:var(--ink2);padding:9px 11px;border-radius:8px;
+  transition:background .12s,color .12s}
+.whoitem:hover{background:var(--line2);color:var(--ink)}
+.whoitem.danger:hover{color:var(--fav)}
+
+/* ---- motion ----------------------------------------------------------------
+   Three moves, used everywhere, so the interface behaves the same way twice.
+   A panel scales in from where it was opened. A list arrives in sequence, which
+   reads as order rather than as a flash. Nothing animates for a reader who has
+   asked their system not to.                                                  */
+@keyframes sf-in{from{opacity:0;transform:translateY(8px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes sf-pop{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes sf-fade{from{opacity:0}to{opacity:1}}
+
+/* modal: the backdrop fades, the card springs. Doing both to both reads as a jump. */
+#infomodal.on,#signin.on{animation:sf-fade .16s var(--ease-out) both}
+#infomodal.on>.imcard,#signin.on>.imcard{animation:sf-pop .26s var(--ease) both}
+
+/* results and value cards arrive in sequence; only the first rows, since a stagger
+   that runs past the fold is a delay nobody sees the start of */
+.grid>.card,.vgrid>.vcard{animation:sf-in .34s var(--ease-out) both}
+.grid>.card:nth-child(n+13),.vgrid>.vcard:nth-child(n+13){animation-delay:0s}
+.grid>.card:nth-child(1),.vgrid>.vcard:nth-child(1){animation-delay:.01s}
+.grid>.card:nth-child(2),.vgrid>.vcard:nth-child(2){animation-delay:.03s}
+.grid>.card:nth-child(3),.vgrid>.vcard:nth-child(3){animation-delay:.05s}
+.grid>.card:nth-child(4),.vgrid>.vcard:nth-child(4){animation-delay:.07s}
+.grid>.card:nth-child(5),.vgrid>.vcard:nth-child(5){animation-delay:.09s}
+.grid>.card:nth-child(6),.vgrid>.vcard:nth-child(6){animation-delay:.11s}
+.grid>.card:nth-child(7),.vgrid>.vcard:nth-child(7){animation-delay:.13s}
+.grid>.card:nth-child(8),.vgrid>.vcard:nth-child(8){animation-delay:.15s}
+.grid>.card:nth-child(9),.vgrid>.vcard:nth-child(9){animation-delay:.17s}
+.grid>.card:nth-child(10),.vgrid>.vcard:nth-child(10){animation-delay:.19s}
+.grid>.card:nth-child(11),.vgrid>.vcard:nth-child(11){animation-delay:.21s}
+.grid>.card:nth-child(12),.vgrid>.vcard:nth-child(12){animation-delay:.23s}
+
+/* the relation list and the skill page */
+.relsec{animation:sf-in .3s var(--ease-out) both}
+.relsec:nth-child(2){animation-delay:.05s}
+.relsec:nth-child(3){animation-delay:.1s}
+#skillpage.on{animation:sf-in .3s var(--ease) both}
+.vtiles{animation:sf-fade .25s var(--ease-out) both}
+
+/* a card lifts under the cursor and settles back; the press is the confirmation */
+.card{transition:border-color .16s,transform .18s var(--ease-out),box-shadow .18s var(--ease-out)}
+.card:hover{transform:translateY(-2px)}
+.card:active,.vcard:active{transform:translateY(0) scale(.995);transition-duration:.06s}
+.btn,.lobrowse,.vmore,.imsrc,.themetgl,.whobtn{transition:background .15s,border-color .15s,
+  color .15s,transform .14s var(--ease-out),filter .15s}
+.btn:active,.lobrowse:active,.vmore:active,.imsrc:active,.themetgl:active{transform:scale(.97)}
+.seg button{transition:background .15s,color .15s}
+.relrow{transition:background .13s,padding-left .13s}
+.relrow:hover{padding-left:10px}
+
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-delay:0s !important;
+    transition-duration:.01ms !important}
+}
 .themetgl{width:32px;height:32px;border-radius:9px;border:1px solid var(--line);flex:none;
   background:var(--panel);color:var(--ink2);cursor:pointer;font-size:14px;line-height:1;
   display:grid;place-items:center;transition:color .15s,border-color .15s}
@@ -611,22 +680,38 @@ async function linkUpstream(){
 async function signOut(){await POST('/api/auth/logout',{});ME.user=null;FAVS=new Set();
   paintMe();if(viewOn('mine'))renderMine();if(viewOn('browse'))loadList();}
 function viewOn(v){const e=document.getElementById('v-'+v);return !!e&&e.classList.contains('on');}
+// Sign out used to sit exposed in the bar, one stray click from ending your session next to
+// the controls you actually use. It lives under the avatar now, which is also where the account
+// it belongs to is identified.
 function paintMe(){
   const w=document.getElementById('who');if(!w)return;
-  if(ME&&ME.linked&&!ME.user){const u=ME.linked;
-    w.innerHTML=`<button class="whobtn" title="${esc(u.email||'')} · via ${esc(ME.upstream||'')}">`+
+  const linked=ME&&ME.linked&&!ME.user, u=whoami();
+  if(!u){w.innerHTML=`<button class="whobtn signin" id="whoin">Sign in</button>`;
+    document.getElementById('whoin').onclick=()=>askSignIn();return;}
+  w.innerHTML=
+    `<button class="whobtn" id="whobtn" aria-haspopup="menu" aria-expanded="false" title="${esc(u.email||'')}">`+
       (u.picture?`<img src="${esc(u.picture)}" alt="">`:`<span class="whoin">${esc((u.name||'?')[0])}</span>`)+
-      `</button><button class="whoout" id="whoout">Disconnect</button>`;
-    document.getElementById('whoout').onclick=async()=>{await POST('/api/link/forget',{});
-      ME=await loadMe();paintMe();if(viewOn('mine'))renderMine();};
-    return;}
-  if(signedIn()){const u=ME.user;
-    w.innerHTML=`<button class="whobtn" id="whobtn" title="${esc(u.email||'')}">`+
-      (u.picture?`<img src="${esc(u.picture)}" alt="">`:`<span class="whoin">${esc((u.name||'?')[0])}</span>`)+
-      `</button><button class="whoout" id="whoout">Sign out</button>`;
-    document.getElementById('whoout').onclick=signOut;}
-  else w.innerHTML=`<button class="whobtn signin" id="whoin">Sign in</button>`,
-       (document.getElementById('whoin').onclick=()=>askSignIn());}
+    `</button>`+
+    `<div class="whomenu" id="whomenu" role="menu">`+
+      `<div class="whohead">`+
+        `<div class="whonm">${esc(u.name||'Signed in')}</div>`+
+        `<div class="whoem">${esc(u.email||'')}</div>`+
+        (linked?`<div class="whovia">via ${esc((ME.upstream||'').replace(/^https?:\/\//,''))}</div>`:'')+
+      `</div>`+
+      `<button class="whoitem" id="whomine" role="menuitem">My Skills</button>`+
+      `<button class="whoitem danger" id="whoout" role="menuitem">${linked?'Disconnect':'Sign out'}</button>`+
+    `</div>`;
+  const btn=document.getElementById('whobtn'),menu=document.getElementById('whomenu');
+  const shut=()=>{menu.classList.remove('on');btn.setAttribute('aria-expanded','false');};
+  btn.onclick=e=>{e.stopPropagation();const on=!menu.classList.contains('on');
+    menu.classList.toggle('on',on);btn.setAttribute('aria-expanded',String(on));};
+  document.addEventListener('click',e=>{if(!menu.contains(e.target)&&e.target!==btn)shut();});
+  addEventListener('keydown',e=>{if(e.key==='Escape')shut();});
+  document.getElementById('whomine').onclick=()=>{shut();show('mine');};
+  document.getElementById('whoout').onclick=async()=>{shut();
+    if(linked){await POST('/api/link/forget',{});ME=await loadMe();FAVS=new Set();}
+    else await signOut();
+    paintMe();if(viewOn('mine'))renderMine();if(viewOn('browse'))loadList();};}
 async function refreshFavs(){
   if(!signedIn()){FAVS=new Set();return;}
   try{const m=await API('/api/mine');FAVS=new Set((m.favorites||[]).map(s=>s.id));}catch(e){FAVS=new Set();}}
