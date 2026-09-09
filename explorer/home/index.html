@@ -91,6 +91,7 @@
   .animate-fade-up.anim-delay-2 canvas{
     transform-origin:center;
     will-change:transform,filter;
+    opacity:0;
     animation:sf-graph-float 5.5s ease-in-out .72s infinite;
   }
   .animate-fade-up.anim-delay-2 .sf-hero-graph-overlay{
@@ -327,8 +328,8 @@
       canvas.style.position='relative';
       canvas.style.zIndex='0';
       canvas.style.pointerEvents='none';
+      canvas.style.opacity='0';
       var overlay=svgElement('svg',{class:'sf-hero-graph-overlay',viewBox:'0 0 540 440',role:'group','aria-label':'Interactive skill relationship graph'});
-      overlay.appendChild(svgElement('rect',{class:'sf-hero-graph-bg',width:'540',height:'440',fill:'var(--sf-panel2)'}));
       var edgeLayer=svgElement('g',{'aria-hidden':'true'});
       var nodeLayer=svgElement('g',{});
       overlay.appendChild(edgeLayer);
