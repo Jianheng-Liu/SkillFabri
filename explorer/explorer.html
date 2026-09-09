@@ -12,7 +12,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 :root{
   --bg:#F8F7F1;--panel:#FFFFFF;--panel2:#FAF9F5;--ink:#141414;--ink2:#4D4D4D;--muted:#9A9A9A;--line:rgba(0,0,0,0.08);--line2:rgba(0,0,0,0.05);
-  --accent:#2847E0;--accent-soft:rgba(40,71,224,0.07);--same:#E8590C;--inter:#14B8A6;--contain:#2847E0;--fav:#E84040;
+  --accent:#2847E0;--accent-soft:rgba(40,71,224,0.07);--same:#D62F78;--inter:#14B8A6;--contain:#2847E0;--fav:#E84040;
   --mono:'JetBrains Mono',ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   --sans:'Inter',ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   --display:'Bricolage Grotesque',var(--sans);
@@ -21,27 +21,27 @@
   --ease:cubic-bezier(.32,.72,0,1);
   --ease-out:cubic-bezier(.16,1,.3,1);
   --hh:56px;                                  /* header height — #skillpage and .rail derive from it */
-  --esame:#D2703A;--einter:#2F8E80;--econtain:#5566C0;
+  --esame:#C53A70;--einter:#2F8E80;--econtain:#5566C0;
   --nfill:0.24;--nfillc:0.40;--nhalo:0.12;--nstroke:1;
   --shadow:0 1px 3px rgba(20,20,20,.06),0 8px 28px rgba(20,20,20,.07);
 }
 @media (prefers-color-scheme:dark){:root{
   --bg:#17171C;--panel:#212128;--panel2:#1C1C22;--ink:#ECECF2;--ink2:#B4BAC8;--muted:#7A7A86;--line:rgba(255,255,255,0.09);--line2:rgba(255,255,255,0.05);
-  --accent:#7A8DF2;--accent-soft:rgba(122,141,242,0.14);--same:#F2874A;--inter:#1FBE9C;--contain:#7A8DF2;--fav:#EE5555;
+  --accent:#7A8DF2;--accent-soft:rgba(122,141,242,0.14);--same:#FF5C9B;--inter:#1FBE9C;--contain:#7A8DF2;--fav:#EE5555;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 34px rgba(0,0,0,.34);
 }}
 :root[data-theme=dark]{
   --bg:#17171C;--panel:#212128;--panel2:#1C1C22;--ink:#ECECF2;--ink2:#B4BAC8;--muted:#7A7A86;--line:rgba(255,255,255,0.09);--line2:rgba(255,255,255,0.05);
-  --accent:#7A8DF2;--accent-soft:rgba(122,141,242,0.14);--same:#F2874A;--inter:#1FBE9C;--contain:#7A8DF2;--fav:#EE5555;
+  --accent:#7A8DF2;--accent-soft:rgba(122,141,242,0.14);--same:#FF5C9B;--inter:#1FBE9C;--contain:#7A8DF2;--fav:#EE5555;
   /* edges get their own, deliberately duller palette — chips and legend keep the saturated one */
-  --esame:#C4753F;--einter:#3F9385;--econtain:#6B77BC;
+  --esame:#E06A96;--einter:#3F9385;--econtain:#6B77BC;
   --nfill:0.15;--nfillc:0.28;--nhalo:0.075;--nstroke:0.72;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 34px rgba(0,0,0,.34);
 }
 :root[data-theme=light]{
   --bg:#F8F7F1;--panel:#FFFFFF;--panel2:#FAF9F5;--ink:#141414;--ink2:#4D4D4D;--muted:#9A9A9A;--line:rgba(0,0,0,0.08);--line2:rgba(0,0,0,0.05);
-  --accent:#2847E0;--accent-soft:rgba(40,71,224,0.07);--same:#E8590C;--inter:#14B8A6;--contain:#2847E0;--fav:#E84040;
-  --esame:#D2703A;--einter:#2F8E80;--econtain:#5566C0;
+  --accent:#2847E0;--accent-soft:rgba(40,71,224,0.07);--same:#D62F78;--inter:#14B8A6;--contain:#2847E0;--fav:#E84040;
+  --esame:#C53A70;--einter:#2F8E80;--econtain:#5566C0;
   --nfill:0.24;--nfillc:0.40;--nhalo:0.12;--nstroke:1;
   --shadow:0 1px 3px rgba(20,20,20,.06),0 8px 28px rgba(20,20,20,.07);
 }
@@ -387,6 +387,31 @@ h1{font-size:27px;letter-spacing:-.03em;margin:0 0 6px;font-weight:800;text-wrap
 .snodeg.hot .snode{stroke-width:2.8px;fill-opacity:.36}
 .shalo{transition:opacity .14s}.snodeg.dim .shalo{opacity:.03}
 .sedge{transition:opacity .14s}
+@keyframes sp-edge-reveal{from{stroke-dashoffset:var(--sp-edge-length)}to{stroke-dashoffset:0}}
+@keyframes sp-dot-light{
+  0%{opacity:0;transform:scale(.35)}
+  45%{opacity:1;filter:drop-shadow(0 0 5px currentColor);transform:scale(1.35)}
+  100%{opacity:.76;filter:drop-shadow(0 0 1px currentColor);transform:scale(1)}
+}
+@keyframes sp-node-light{
+  0%{opacity:0;transform:scale(.72)}
+  45%{opacity:1;filter:drop-shadow(0 0 8px currentColor);transform:scale(1.18)}
+  100%{opacity:.88;filter:drop-shadow(0 0 2px currentColor);transform:scale(1)}
+}
+.sp-edge-active>line{
+  stroke-width:3.00 !important;stroke-dasharray:2 7;stroke-dashoffset:var(--sp-edge-length);
+  opacity:1 !important;animation:sp-edge-reveal .62s cubic-bezier(.22,1,.36,1) var(--sp-edge-delay) both;
+}
+.sp-edge-dot{transform-box:fill-box;transform-origin:center;opacity:0;pointer-events:none}
+.sp-edge-active .sp-edge-dot{animation:sp-dot-light .26s cubic-bezier(.22,1,.36,1) var(--sp-dot-delay) both}
+.sp-node-light{transform-box:fill-box;transform-origin:center;opacity:0;pointer-events:none}
+.snodeg.sp-node-lit .sp-node-light{animation:sp-node-light .55s cubic-bezier(.22,1,.36,1) var(--sp-node-delay) both}
+.snodeg.sp-node-source .sp-node-light{opacity:.95;filter:drop-shadow(0 0 6px currentColor)}
+@media (prefers-reduced-motion:reduce){
+  .sp-edge-active>line{animation:none;stroke-dasharray:2 7;stroke-dashoffset:0}
+  .sp-edge-active .sp-edge-dot{animation:none;opacity:.76;filter:none;transform:none}
+  .snodeg.sp-node-lit .sp-node-light{animation:none;opacity:.88;filter:none;transform:none}
+}
 .glbl{font-size:9.5px;fill:var(--ink2);font-family:var(--mono);pointer-events:none}.glbl.foc{font-size:11px;font-weight:700;fill:var(--ink)}
 .glbl.near{font-size:9px;fill:var(--muted);opacity:.85}
 .relsec>.relhead{cursor:pointer;user-select:none;transition:color .13s}
@@ -455,7 +480,7 @@ h1{font-size:27px;letter-spacing:-.03em;margin:0 0 6px;font-weight:800;text-wrap
 /* ---- full-screen skill page ---- */
 #skillpage{position:fixed;inset:var(--hh) 0 0 0;z-index:70;background:var(--bg);display:none;flex-direction:column}
 #skillpage.on{display:flex}
-.sptop{display:flex;align-items:center;gap:11px;padding:14px 26px 12px;background:var(--panel);flex-wrap:wrap}
+.sptop{display:flex;align-items:center;gap:11px;padding:14px 26px 12px;background:color-mix(in srgb,var(--panel) 86%,transparent);flex-wrap:wrap}
 .imtop{display:flex;align-items:flex-start;gap:12px}
 .imtop h2{margin:0 0 6px;font-size:19px;letter-spacing:-.025em}
 .imtags{display:flex;flex-wrap:wrap;gap:6px}
@@ -482,7 +507,7 @@ h1{font-size:27px;letter-spacing:-.03em;margin:0 0 6px;font-weight:800;text-wrap
 .spdepth{font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--muted);
   border:1px solid var(--line);border-radius:6px;padding:2px 6px;flex:none}
 .spmark{width:32px;height:32px;border-radius:9px;border:1px solid;display:grid;place-items:center;flex:none}
-.spctl{display:flex;align-items:center;gap:22px;padding:0 26px 13px;background:var(--panel);
+.spctl{display:flex;align-items:center;gap:22px;padding:0 26px 13px;background:color-mix(in srgb,var(--panel) 86%,transparent);
   border-bottom:1px solid var(--line);flex-wrap:wrap}
 .splegend{display:flex;gap:14px;font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;color:var(--muted)}
 .splegend span{display:inline-flex;align-items:center;gap:6px}
@@ -870,7 +895,7 @@ function drawForce(host,nodes,edges,opts){opts=opts||{};const W=opts.W||900,H=op
     const end=()=>{drag=null;svg.style.cursor='grab';};svg.addEventListener('pointerup',end);svg.addEventListener('pointerleave',end);
   }
   const adj={};nodes.forEach(n=>adj[n.id]=new Set([n.id]));edges.forEach(e=>{if(adj[e.a]&&adj[e.b]){adj[e.a].add(e.b);adj[e.b].add(e.a);}});
-  const eG=document.createElementNS(NS,'g'),nG=document.createElementNS(NS,'g'),lG=document.createElementNS(NS,'g');g.append(eG,nG,lG);
+  const eG=document.createElementNS(NS,'g'),aG=document.createElementNS(NS,'g'),nG=document.createElementNS(NS,'g'),lG=document.createElementNS(NS,'g');g.append(eG,aG,nG,lG);
   const lineEls=[];
   const EW={same:2.5,contain:2.3,intersect:2.0,near:1.1};
   edges.forEach(e=>{
@@ -881,14 +906,16 @@ function drawForce(host,nodes,edges,opts){opts=opts||{};const W=opts.W||900,H=op
     const A=idx[ea],B=idx[eb];if(!A||!B)return;
     const l=document.createElementNS(NS,'line');
     const isNear=e.type==='near';
-    l.setAttribute('stroke',isNear?'var(--muted)':(opts.colorEdge?cssv(RELE[e.type]||'--line'):'var(--line)'));
-    l.setAttribute('stroke-width',((EW[e.type]||2.0)*Math.max(0.55,DENS)).toFixed(2));
-    l.setAttribute('stroke-linecap','round');
+    const edgeOpacity=e.type==='same'?0.72:0.48;
     const simBase=isNear?Math.max(0.07,Math.min(0.52,(((e.sim||0.7)-0.7)/0.3)*0.45+0.07)):null;
-    if(isNear){l.setAttribute('stroke-dasharray','4 4');l.setAttribute('stroke-opacity',(simBase||0.2).toFixed(2));}
+    l.setAttribute('stroke',isNear?'var(--muted)':(opts.colorEdge?cssv(RELE[e.type]||'--line'):'var(--line)'));
+    l.setAttribute('stroke-width','3.00');
+    l.setAttribute('stroke-opacity',isNear?(simBase||0.2):edgeOpacity);
+    l.setAttribute('stroke-linecap','round');
+    if(isNear)l.setAttribute('stroke-opacity',(simBase||0.2).toFixed(2));
     if(dirOK)l.setAttribute('marker-end',`url(#ar-${uid})`);   // no arrow beats a wrong arrow
     l.setAttribute('vector-effect','non-scaling-stroke');l.setAttribute('class','sedge');eG.appendChild(l);
-    lineEls.push({el:l,a:ea,b:eb,type:e.type,dir:dirOK,near:isNear,base:isNear?simBase:(opts.colorEdge?0.62:0.45)});});
+    lineEls.push({el:l,a:ea,b:eb,type:e.type,dir:dirOK,near:isNear,base:isNear?simBase:(opts.colorEdge?edgeOpacity:0.45)});});
   // Nodes are drawn the way the landing-page graph draws them — a soft halo, a translucent body
   // with a solid rim — and each is a group, so it can scale on hover and be dragged.
   // who a node's closest neighbours are, so a hover can name them without a second pass
@@ -917,10 +944,14 @@ function drawForce(host,nodes,edges,opts){opts=opts||{};const W=opts.W||900,H=op
     c.setAttribute('class','snode');
     const ttl=document.createElementNS(NS,'title');
     ttl.textContent=(n.name||'')+(n.capability?' · '+n.capability:'');
-    g.append(halo,m,c,ttl);nG.appendChild(g);
+    const light=document.createElementNS(NS,'circle');
+    light.setAttribute('cx',n.x);light.setAttribute('cy',n.y);light.setAttribute('r',R+3);
+    light.setAttribute('fill','none');light.setAttribute('stroke',col);light.setAttribute('stroke-width','2');
+    light.setAttribute('class','sp-node-light');light.style.color=col;
+    g.append(halo,m,c,ttl,light);nG.appendChild(g);
     circEls[n.id]=c;groupEls[n.id]=g;
-    g.addEventListener('mouseenter',()=>{if(DRAG)return;hi(n.id);opts.onHover&&opts.onHover(n);});
-    g.addEventListener('mouseleave',()=>{if(DRAG)return;hi(opts.center!=null?opts.center:-1);opts.onHover&&opts.onHover(null);});
+    g.addEventListener('mouseenter',()=>{if(DRAG)return;hi(n.id,true);opts.onHover&&opts.onHover(n);});
+    g.addEventListener('mouseleave',()=>{if(DRAG)return;hi(opts.center!=null?opts.center:-1,false);opts.onHover&&opts.onHover(null);});
     g.addEventListener('click',ev=>{ev.stopPropagation();if(g._moved)return;opts.onClick&&opts.onClick(n);});
     g.addEventListener('pointerdown',ev=>{ev.stopPropagation();ev.preventDefault();
       const p=svgPt(ev);DRAG={n,ox:n.x-(p.x-VP.x)/VP.k,oy:n.y-(p.y-VP.y)/VP.k};
@@ -928,9 +959,9 @@ function drawForce(host,nodes,edges,opts){opts=opts||{};const W=opts.W||900,H=op
     g.addEventListener('pointermove',ev=>{
       if(!DRAG||DRAG.n!==n)return;
       const p=svgPt(ev);n.x=(p.x-VP.x)/VP.k+DRAG.ox;n.y=(p.y-VP.y)/VP.k+DRAG.oy;g._moved=true;
-      [halo,m,c].forEach(e=>{e.setAttribute('cx',n.x);e.setAttribute('cy',n.y);});
+      [halo,m,c,light].forEach(e=>{e.setAttribute('cx',n.x);e.setAttribute('cy',n.y);});
       g.style.transformOrigin=n.x+'px '+n.y+'px';redrawEdges(n.id);
-      hi(focus);});   // labels are placed from node coords, so they have to follow the drag
+      hi(focus,focus>=0);});   // labels are placed from node coords, so they have to follow the drag
     ['pointerup','pointercancel'].forEach(t=>g.addEventListener(t,()=>{
       if(DRAG&&DRAG.n===n){DRAG=null;g.style.cursor='grab';setTimeout(()=>{g._moved=false;},0);}}));
     g.style.cursor='grab';g.style.transformOrigin=n.x+'px '+n.y+'px';
@@ -941,12 +972,54 @@ function drawForce(host,nodes,edges,opts){opts=opts||{};const W=opts.W||900,H=op
     const rb=rOf(B)+1.5+(L.dir?+AR*0.72:0);   // clear the arrowhead
     L.el.setAttribute('x1',(A.x+dx/d*ra).toFixed(1));L.el.setAttribute('y1',(A.y+dy/d*ra).toFixed(1));
     L.el.setAttribute('x2',(B.x-dx/d*rb).toFixed(1));L.el.setAttribute('y2',(B.y-dy/d*rb).toFixed(1));}
-  function redrawEdges(id){lineEls.forEach(L=>{if(L.a===id||L.b===id)trim(L);});}
+  function redrawEdges(id){lineEls.forEach(L=>{if(L.a===id||L.b===id)trim(L);});updateActiveEdges();}
   lineEls.forEach(L=>trim(L));      // center-to-center until something was dragged; the arrow needs the rim
-  function hi(f){focus=f;
+  let activeFocus=-1,activeEdges=[];
+  function clearActive(){
+    aG.textContent='';activeEdges=[];activeFocus=-1;
+    for(const id in groupEls)groupEls[id].classList.remove('sp-node-lit','sp-node-source');
+  }
+  function activePoints(L,sourceId){
+    const A=idx[sourceId],B=idx[L.a===sourceId?L.b:L.a];if(!A||!B)return null;
+    const dx=B.x-A.x,dy=B.y-A.y,d=Math.hypot(dx,dy)||1,ra=rOf(A)+1.5,rb=rOf(B)+1.5;
+    return {x1:A.x+dx/d*ra,y1:A.y+dy/d*ra,x2:B.x-dx/d*rb,y2:B.y-dy/d*rb};
+  }
+  function updateActiveEdges(){
+    activeEdges.forEach(item=>{const p=activePoints(item.L,item.source);if(!p)return;
+      item.line.setAttribute('x1',p.x1.toFixed(1));item.line.setAttribute('y1',p.y1.toFixed(1));
+      item.line.setAttribute('x2',p.x2.toFixed(1));item.line.setAttribute('y2',p.y2.toFixed(1));
+      const count=item.dots.length,dx=p.x2-p.x1,dy=p.y2-p.y1;
+      item.dots.forEach((dot,i)=>{const progress=(i+1)/(count+1);dot.setAttribute('cx',(p.x1+dx*progress).toFixed(1));dot.setAttribute('cy',(p.y1+dy*progress).toFixed(1));});});}
+  function showActive(f){
+    if(f<0){clearActive();return;}
+    if(activeFocus===f){updateActiveEdges();return;}
+    clearActive();activeFocus=f;
+    const lit=new Set();
+    lineEls.filter(L=>L.a===f||L.b===f).forEach((L,order)=>{
+      const neighbor=L.a===f?L.b:L.a,p=activePoints(L,f);if(!p)return;
+      const edge=document.createElementNS(NS,'g');edge.setAttribute('class','sp-edge-active');
+      const line=document.createElementNS(NS,'line'),color=L.el.getAttribute('stroke')||'var(--line)';
+      line.setAttribute('x1',p.x1.toFixed(1));line.setAttribute('y1',p.y1.toFixed(1));
+      line.setAttribute('x2',p.x2.toFixed(1));line.setAttribute('y2',p.y2.toFixed(1));
+      line.setAttribute('stroke',color);line.setAttribute('stroke-width','3.00');line.setAttribute('stroke-opacity',Math.min(.62,Math.max(.26,L.base||.48)).toFixed(2));
+      line.setAttribute('stroke-linecap','round');line.setAttribute('vector-effect','non-scaling-stroke');
+      const length=Math.max(1,Math.hypot(p.x2-p.x1,p.y2-p.y1));line.style.setProperty('--sp-edge-length',length+'px');
+      line.style.setProperty('--sp-edge-delay',order*72+'ms');edge.appendChild(line);
+      const dotCount=Math.max(3,Math.ceil(length/19));const dots=[];
+      for(let i=0;i<dotCount;i++){const dot=document.createElementNS(NS,'circle'),progress=(i+1)/(dotCount+1);
+        dot.setAttribute('cx',(p.x1+(p.x2-p.x1)*progress).toFixed(1));dot.setAttribute('cy',(p.y1+(p.y2-p.y1)*progress).toFixed(1));
+        dot.setAttribute('r','1.6');dot.setAttribute('fill',color);dot.setAttribute('class','sp-edge-dot');dot.style.color=color;
+        dot.style.setProperty('--sp-dot-delay',order*72+i*28+'ms');edge.appendChild(dot);dots.push(dot);}
+      aG.appendChild(edge);activeEdges.push({L,source:f,line,dots});
+      if(!lit.has(neighbor)){lit.add(neighbor);const ng=groupEls[neighbor];if(ng){ng.classList.add('sp-node-lit');ng.style.setProperty('--sp-node-delay',order*72+Math.min(560,dotCount*28+100)+'ms');}}
+    });
+    const source=groupEls[f];if(source)source.classList.add('sp-node-source');
+  }
+  function hi(f,animate){focus=f;
     lineEls.forEach(L=>{L.el.setAttribute('opacity',(f<0||L.a===f||L.b===f?L.base||0.65:0.07).toFixed(2));});
     for(const id in groupEls){groupEls[id].classList.toggle('dim',f>=0&&!adj[f].has(+id));
       groupEls[id].classList.toggle('hot',f>=0&&+id===f);}
+    showActive(animate?f:-1);
     // Naming a fixed set leaves the same words on screen forever. The labels belong to the
     // cursor: whatever is under it is named in full, and its nearest neighbours get a quieter
     // one, so moving across the graph reads out the neighbourhood as you go.
@@ -959,9 +1032,9 @@ function drawForce(host,nodes,edges,opts){opts=opts||{};const W=opts.W||900,H=op
     if(f>=0)(simAdj[f]||[]).slice(0,opts.labelNear||5).forEach(o=>{if(!foc.has(o.id))put(o.id,false);});
     foc.forEach(id=>put(id,true));}
   const rest=opts.center!=null?opts.center:-1;host.innerHTML='';host.appendChild(svg);
-  hi(rest);
+  hi(rest,false);
   // the relation list highlights its node in the graph on hover
-  window._hlNode=id=>hi(id>=0&&idx[id]?id:rest);
+  window._hlNode=id=>hi(id>=0&&idx[id]?id:rest,false);
   if(opts.animate===false||matchMedia('(prefers-reduced-motion: reduce)').matches){return svg;}
   eG.style.opacity='0';
   const dur=opts.dur||280,t0=performance.now();
