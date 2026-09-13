@@ -294,9 +294,14 @@ def can_place():
 @app.get("/api/caps")
 @cached
 def caps():
+    import merge as _m
     return jsonify({"add": can_place(),
                     "why": {"embeddings": D.get("X") is not None,
-                            "api_key": bool(os.environ.get("OPENROUTER_API_KEY"))}})
+                            "api_key": bool(os.environ.get("OPENROUTER_API_KEY"))},
+                    # merging needs the documents rather than the vectors, so it can be on when
+                    # adding is off and the other way round; one probe reports both
+                    "merge": _m.ready(), "merge_why": _m.available(),
+                    "min_shared": _m.MIN_SHARED})
 
 
 @app.get("/api/overview")
@@ -607,6 +612,90 @@ def corpus_id():
     return D["cid"]
 
 
+# ---------- merging two skills into one ----------
+import merge as _merge
+
+# The measured pair. gpt-5.4 at medium effort retained a median 0.97 of the strings it carried
+# across a stratified sample; the cost is about $0.16 a merge and output tokens are roughly two
+# thirds of it, so a cheaper model saves less than it looks like it would. Override per request.
+MERGE_MODEL = os.environ.get("SF_MERGE_MODEL", "openai/gpt-5.4")
+
+
+def _shared(a, b):
+    """The count on the relation row between a and b, or None if they are not related."""
+    return next((e.get("shared") for e in D["rel"][a] if e["id"] == b), None)
+
+
+@app.get("/api/merge/can")
+def merge_can():
+    """Whether this instance can merge, and which piece is missing if not."""
+    return jsonify({"ready": _merge.ready(), "why": _merge.available(),
+                    "min_shared": _merge.MIN_SHARED})
+
+
+@app.get("/api/merge/pair")
+def merge_pair():
+    """What a merge of this pair would involve, asked before anyone pays for it."""
+    a, b = int(request.args.get("a", -1)), int(request.args.get("b", -1))
+    if not (0 <= a < D["N"] and 0 <= b < D["N"]):
+        return jsonify({"error": "no such skill"}), 404
+    sh = _shared(a, b)
+    ra, rb = D["recs"][a], D["recs"][b]
+    return jsonify({
+        "a": {"id": a, "name": ra["name"], "activity": ra["activity"], "capability": ra["capability"],
+              "steps": len(D["nodes"][a].get("steps") or []), "chars": len(_merge.source(a))},
+        "b": {"id": b, "name": rb["name"], "activity": rb["activity"], "capability": rb["capability"],
+              "steps": len(D["nodes"][b].get("steps") or []), "chars": len(_merge.source(b))},
+        "shared": sh, "ops": shared_ops(a, b, sh) if isinstance(sh, int) else [],
+        "eligible": _merge.eligible(sh, a, b), "min_shared": _merge.MIN_SHARED,
+        # 1,722 skills reached the corpus through a listing rather than a file, so they have a
+        # row and no document. The count says merge and the merge cannot read them, and the
+        # panel has to say which of the two it is
+        "have_docs": [bool(_merge.source(a)), bool(_merge.source(b))],
+        "ready": _merge.ready(), "why": _merge.available()})
+
+
+@app.post("/api/merge/run")
+def merge_run():
+    """Run the merge, saying what it is doing while it does it.
+
+    Server-sent events rather than one long POST. The call runs the better part of a minute
+    and spends real money, and a spinner that cannot say whether anything is happening is how
+    a reader decides the page is stuck and clicks again.
+    """
+    body = request.get_json(force=True) or {}
+    a, b = int(body.get("a", -1)), int(body.get("b", -1))
+    model = (body.get("model") or "").strip() or MERGE_MODEL
+    effort = (body.get("effort") or "medium").strip()
+
+    def stream():
+        def ev(kind, **d):
+            return "data: " + json.dumps({"t": kind, **d}) + "\n\n"
+        if not _merge.ready():
+            yield ev("error", message="merging is not set up on this instance",
+                     why=_merge.available()); return
+        if not (0 <= a < D["N"] and 0 <= b < D["N"]):
+            yield ev("error", message="no such skill"); return
+        sh = _shared(a, b)
+        if not (isinstance(sh, int) and sh >= _merge.MIN_SHARED):
+            yield ev("error", message=f"these two share {sh or 0} operations; "
+                                      f"merging wants at least {_merge.MIN_SHARED}"); return
+        missing = [D["recs"][x]["name"] for x in (a, b) if not _merge.source(x)]
+        if missing:
+            yield ev("error", message="no SKILL.md on file for " + " and ".join(missing)); return
+        yield ev("stage", step=1, message="reading both SKILL.md in full")
+        try:
+            out = _merge.run(D["recs"][a], D["recs"][b], a, b, model, effort)
+        except Exception as e:
+            yield ev("error", message=str(e)); return
+        yield ev("stage", step=2, message="checking every string it says it carried")
+        yield ev("done", result=out)
+
+    # no @cached here, and no buffering in front of it: this route is the one that writes
+    return app.response_class(stream(), mimetype="text/event-stream",
+                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
 @app.get("/api/corpus")
 def corpus():
     return jsonify({"id": corpus_id(), "skills": D["N"]})
@@ -915,7 +1004,11 @@ def save_skill():
            "tech": b.get("tech") or [], "activity": b.get("activity") or "—", "capability": b.get("capability") or "—",
            "object": (b.get("labels") or {}).get("object") if b.get("labels") else "—",
            "neighbours": (b.get("neighbours") or [])[:45], "neigh_edges": (b.get("neigh_edges") or [])[:400],
-           "labels": b.get("labels"), "ts": b.get("ts") or 0}
+           "labels": b.get("labels"), "ts": b.get("ts") or 0,
+           # a merged skill carries the document it produced and the two it came from; without
+           # the text My Skills would hold a summary of a file the user can no longer get back
+           "md": b.get("md") or "", "merged_from": b.get("merged_from") or None,
+           "check": b.get("check") or None}
     store.add_skill(u["sub"], rec)
     return jsonify({"ok": True})
 
@@ -1070,6 +1163,7 @@ def full():
         "pop": int(s.get("popularity") or 0), "market": s.get("market") or "", "url": s.get("url") or "",
         "author": s.get("author") or "", "repo": s.get("repo") or "", "repo_url": s.get("repo_url") or "",
         "shared": shared, "shared_n": sn, "anchor_name": aname,
+        "anchor": anchor if ok else -1,
         "counts": dict(collections.Counter(e["type"] for e in D["rel"][i]))})
 
 # `/` is the published brand design, mirrored from the Figma build so the landing page is exactly

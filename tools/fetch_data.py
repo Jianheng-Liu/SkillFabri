@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Download the embedding files from Hugging Face.
+"""Download the large data files from Hugging Face.
 
-Two files are too large for git — together well over a gigabyte — so they live on the Hub and
-are pulled on demand:
+Three files are too big for git, so they live on the Hub and are pulled on demand:
 
     skill_embeddings.npy   one vector per skill; Add My Skill searches it for neighbours
-    step_embeddings.npz    one vector per workflow step; highlights the operations two skills
-                           share, the ×N badge in the relation list
+    step_embeddings.npz    one vector per workflow step; ranks which operations two skills
+                           share when their wordings differ
+    skillmd.zip            every skill's own SKILL.md; Merge reads two of them in full
 
-Neither is needed to browse, search, or open a skill's graph. Fetch them when you want the
-features they power.
+None is needed to browse, search, or open a skill's graph. Fetch the ones whose features you
+want. skillmd.zip is 40 MB, the two vector files together are well over a gigabyte.
 
-    python tools/fetch_data.py             # both
-    python tools/fetch_data.py --only skill_embeddings.npy
+    python tools/fetch_data.py             # all three
+    python tools/fetch_data.py --only skillmd.zip
 
 Resumable: a interrupted download continues from where it stopped rather than starting over.
 Each file is verified against the corpus after arrival, because a truncated .npy still looks
@@ -28,8 +28,9 @@ REPO = os.environ.get("SF_HF_REPO", "JianhengLiu/skillfabri-data")
 BASE = f"https://huggingface.co/datasets/{REPO}/resolve/main"
 
 FILES = {
-    "skill_embeddings.npy": "profile vectors — Add My Skill",
-    "step_embeddings.npz":  "step vectors — shared-operation highlighting",
+    "skill_embeddings.npy": "profile vectors, for Add My Skill",
+    "step_embeddings.npz":  "step vectors, for shared-operation ranking",
+    "skillmd.zip":          "every skill's SKILL.md, for Merge",
 }
 
 
@@ -98,6 +99,16 @@ def download(name, dest, force=False):
 def verify(name, path, n_skills):
     """A truncated array is still a file. Check it against the corpus it has to line up with."""
     import numpy as np
+    if name.endswith(".zip"):
+        # a truncated zip still opens; it is the central directory at the end that decides,
+        # and testzip reads every member rather than trusting the listing
+        import zipfile
+        with zipfile.ZipFile(path) as z:
+            bad = z.testzip()
+            if bad:
+                sys.exit(f"  {name}: {bad} is corrupt. Delete it and fetch again.")
+            print(f"  {name}: ok, {len(z.namelist()):,} documents")
+        return
     if name.endswith(".npy"):
         X = np.load(path, mmap_mode="r")
         if X.shape[0] != n_skills:
@@ -112,7 +123,7 @@ def verify(name, path, n_skills):
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--only", choices=list(FILES), help="fetch one file instead of both")
+    ap.add_argument("--only", choices=list(FILES), help="fetch one file instead of all three")
     ap.add_argument("--force", action="store_true", help="refetch even if the file looks complete")
     ap.add_argument("--dest", default=str(ROOT / "data"))
     a = ap.parse_args()

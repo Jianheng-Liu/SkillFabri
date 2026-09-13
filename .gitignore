@@ -24,3 +24,7 @@ venv/
 
 # the token this instance holds for your account
 data/upstream.json
+
+# fetched from Hugging Face, not committed
+data/skillmd.zip
+data/skillmd.zip.part

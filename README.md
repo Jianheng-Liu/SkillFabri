@@ -73,18 +73,41 @@ export OPENROUTER_API_KEY=...                            # to read and label the
 
 Restart, and **Add My Skill** appears. Signed in, the result goes to your account.
 
-## The embedding files
+## Merge two skills
 
-Two arrays are far too large for git, so they are fetched from the
+Open any skill, click a relation row, and the card names both skills and lists the operations
+they share. Where there are three or more, **Merge these two** writes one `SKILL.md` from both.
+
+Both documents go to the model whole. A merge written from summaries loses the commands, which
+is the thing worth keeping, so nothing is truncated on the way in. What comes back is one
+document, plus a count of how much of the originals survived into it: the model lists the exact
+strings it took, and each is checked against the source it claims to come from and against its
+own output. That number is on the result, not hidden behind a tick, because the merges that go
+wrong go badly wrong and they are the ones worth looking at.
+
+It needs the source documents and a key:
+
+```bash
+python tools/fetch_data.py --only skillmd.zip    # 40 MB
+export OPENROUTER_API_KEY=...
+```
+
+Restart, and the button works. About a minute and roughly $0.16 a merge. Download the result,
+or save it to your account with both parents recorded as what it came from.
+
+## The large files
+
+Three files are too big for git, so they are fetched from the
 [Hub](https://huggingface.co/datasets/JianhengLiu/skillfabri-data):
 
 | file | size | what stops working without it |
 |---|--:|---|
 | `skill_embeddings.npy` | 226 MB | Add My Skill |
-| `step_embeddings.npz` | 1.1 GB | the **×N** badge, which operations two skills share |
+| `step_embeddings.npz` | 1.1 GB | ranking which operations two skills share |
+| `skillmd.zip` | 40 MB | Merge |
 
 ```bash
-python tools/fetch_data.py              # both
+python tools/fetch_data.py              # all three
 ```
 
 Resumable, and each file is checked against the corpus as it lands. A truncated array is still
@@ -94,7 +117,7 @@ a file, so without that check it would fail much later, somewhere unhelpful.
 roughly 14k short texts through an embedding model, cents rather than dollars, or
 `--backend local` for no key at all.
 
-<details><summary>Publishing your own copy of the arrays</summary>
+<details><summary>Publishing your own copy</summary>
 
 `huggingface_hub` 1.x replaced `huggingface-cli` with `hf`.
 
@@ -103,10 +126,11 @@ hf auth login
 hf repo create my-data --type dataset
 hf upload my-data data/skill_embeddings.npy skill_embeddings.npy --repo-type dataset
 hf upload my-data data/step_embeddings.npz  step_embeddings.npz  --repo-type dataset
+hf upload my-data data/skillmd.zip          skillmd.zip          --repo-type dataset
 ```
 
 The third argument is the name inside the repo, and `tools/fetch_data.py` looks for exactly
-those two. Point it at yours with `SF_HF_REPO=you/my-data`.
+those three. Point it at yours with `SF_HF_REPO=you/my-data`.
 
 </details>
 
@@ -116,6 +140,7 @@ those two. Point it at yours with `SF_HF_REPO=you/my-data`.
 explorer/
   app.py             routes, the graph queries, placing a new skill
   auth.py            sign-in
+  merge.py           writing one skill from two
   store.py           SQLite: accounts, saved skills, your own uploads
   embedder.py        the embedding client
   explorer.html      the explorer, one file
@@ -124,7 +149,7 @@ data/
   skills.json        every labelled skill
   relations.json     the typed graph over them
 tools/
-  fetch_data.py      pulls the embedding arrays
+  fetch_data.py      pulls the large files
   build_embeddings.py
 ```
 
