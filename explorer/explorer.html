@@ -1133,7 +1133,7 @@ function renderSkillPage(s){const el=document.getElementById('skillpage');const 
       `<span class="sptitle">${esc(s.name)}</span>`+
       `<span class="tag act" style="background:${actCol(s.activity)}">${esc(s.activity)}</span>`+
       `<span class="tag cap">${esc(s.capability)}</span>`+
-      `<button class="favb ${on?'on':''}" id="spfav">${on?'♥ saved':'♡ save'}</button>`+
+      `<button class="favb ${on?'on':''}" id="spfav">${on?'♥ Saved':'♡ Save'}</button>`+
     `</div>`+
     `<div class="spctl">`+
       `<span class="spslider">similarity ≥ <b id="spsv">${SP.minsim.toFixed(2)}</b>`+
@@ -1157,7 +1157,7 @@ function renderSkillPage(s){const el=document.getElementById('skillpage');const 
   document.getElementById('spfav').onclick=async()=>{const r=await POST('/api/fav',{id:s.id});
     if(!r||r.error){askSignIn('Sign in to save this skill.');return;}
     if(r.on)FAVS.add(s.id);else FAVS.delete(s.id);const b=document.getElementById('spfav');
-    b.classList.toggle('on',r.on);b.textContent=r.on?'♥ saved':'♡ save';};
+    b.classList.toggle('on',r.on);b.textContent=r.on?'♥ Saved':'♡ Save';};
   wireSplit();
   const sl=document.getElementById('spsl');sl.oninput=e=>{SP.minsim=+e.target.value;document.getElementById('spsv').textContent=SP.minsim.toFixed(2);clearTimeout(SP._t);SP._t=setTimeout(()=>loadSPGraph(true),110);};
   loadSPGraph(false,true);el.classList.add('on');}
@@ -1404,7 +1404,7 @@ function renderFullInfo(s,opts){
         // a merge is written before it is placed, so until it has been there is no graph to
         // open. Offering one anyway would draw an empty canvas and look broken.
         (s.merged&&!s.placed&&opts.mi!=null
-          ? `<button class="btn" style="width:auto;margin:0" onclick="placeMerged(${opts.mi})">◈ Place in the graph →</button>`
+          ? `<button class="btn" style="width:auto;margin:0" onclick="placeMerged(${opts.mi})">◈ Build its graph →</button>`
           : `<button class="btn" style="width:auto;margin:0" onclick="closeInfo();${opts.open}">◈ Open graph →</button>`)+
       `</div>`+
     `</div>`;
@@ -1660,7 +1660,7 @@ const VCAP=48;
 function renderVals(){const vt=document.getElementById('vtiles');if(!vt)return;
   if(BR.dim==='pop'||BR.q){vt.innerHTML='';return;}
   if(BR.val){                      // picked: the grid collapses to a way back out
-    vt.innerHTML=`<button class="vback" id="vback">← all ${esc(BR.dim)}</button>`;
+    vt.innerHTML=`<button class="vback" id="vback">← All ${esc(BR.dim)}</button>`;
     document.getElementById('vback').onclick=()=>{BR.val=null;BR.page=0;renderVals();clearList();};
     return;}
   const all=DIMS[BR.dim]||[];
@@ -1712,7 +1712,7 @@ async function loadList(){const el=document.getElementById('blist');if(!el)retur
   wireDD('hassel', v=>{BR.has=v; BR.page=0;loadList();});
   el.innerHTML=d.items.length?d.items.map(cardHTML).join(''):'<div class="empty" style="grid-column:1/-1">No skills match.</div>';wireCards(el);
   const pages=Math.ceil(d.total/d.size),pg=document.getElementById('pager');
-  pg.innerHTML=pages>1?`<button ${BR.page<=0?'disabled':''} id="prev">← prev</button><button disabled style="border:0;background:none">${BR.page+1} / ${pages}</button><button ${BR.page>=pages-1?'disabled':''} id="next">next →</button>`:'';
+  pg.innerHTML=pages>1?`<button ${BR.page<=0?'disabled':''} id="prev">← Prev</button><button disabled style="border:0;background:none">${BR.page+1} / ${pages}</button><button ${BR.page>=pages-1?'disabled':''} id="next">Next →</button>`:'';
   const pv=document.getElementById('prev'),nx=document.getElementById('next');if(pv)pv.onclick=()=>{BR.page--;loadList();};if(nx)nx.onclick=()=>{BR.page++;loadList();};}
 let sT;document.addEventListener('input',e=>{if(e.target.id!=='q')return;clearTimeout(sT);
   const q=e.target.value.trim();
@@ -1739,7 +1739,7 @@ async function renderAdd(){const el=document.getElementById('v-add');
      <div class="orline"><span>or paste the file</span></div>
      <textarea id="a-md" class="mdbox" spellcheck="false" placeholder="---&#10;name: pr-security-reviewer&#10;description: Reviews PR diffs for injection flaws and leaked secrets.&#10;---&#10;&#10;## Workflow&#10;1. Fetch the pull-request diff&#10;2. Run semgrep over the changed files&#10;3. Post inline findings that gate the PR"></textarea>
      <div id="fname" class="hint"></div>
-     <button class="btn" id="a-go">◈ Run pipeline → place in graph</button>
+     <button class="btn" id="a-go">◈ Build its graph →</button>
      <div class="hint" style="margin-top:9px">The pipeline reads the raw file and extracts the <b>function, steps, tech, activity and object</b> itself, then embeds it, finds neighbours, and types the relations.</div>
    </div><div id="a-res"><div class="empty">Your skill's place in the graph will appear here.</div></div></div>`;
   const drop=document.getElementById('drop'),file=document.getElementById('file'),box=document.getElementById('a-md');
@@ -1778,7 +1778,7 @@ async function placeSkill(md,opts){opts=opts||{};const btn=document.getElementBy
   res.innerHTML=`<div class="pipe"><div class="st on">1 · label</div><div class="st">2 · embed</div><div class="st">3 · neighbours</div><div class="st">4 · relations</div></div><div class="empty"><span class="spin"></span><div style="margin-top:12px">labelling → embedding → finding neighbours → typing relations…</div></div>`;
   try{const r=await POST('/api/place',body);if(r.error){res.innerHTML=`<div class="empty">${esc(r.error)}</div>`;}else{LAST={...r,_name:(opts.name||uname||(r.labels&&r.labels.name)||'your skill'),_body:body,_opts:opts};renderPlacement(LAST);}}
   catch(e){res.innerHTML='<div class="empty">Something went wrong. Is the backend running?</div>';}
-  btn.disabled=false;btn.textContent='◈ Run pipeline → place in graph';}
+  btn.disabled=false;btn.textContent='◈ Build its graph →';}
 function renderPlacement(r){const res=document.getElementById('a-res');const nm=r._name;const typed=r.neighbours.filter(n=>n.type);
   const L=r.labels;const labelCard=L?`<div class="labelcard"><div class="eyebrow" style="margin:0 0 8px">Stage 1 · extracted labels</div>`+
     [['fine',L.fine],['summary',L.summary],['activity',L.activity],['object',L.object],['steps',(L.steps||[]).join(' › ')],['tech',(L.tech||[]).join(', ')],['concern',(L.concern||[]).join(', ')]].filter(x=>x[1]).map(x=>`<div class="lrow"><div class="lk">${x[0]}</div><div>${esc(x[1])}</div></div>`).join('')+`</div>`:'';
