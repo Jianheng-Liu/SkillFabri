@@ -424,6 +424,11 @@ h1{font-size:27px;letter-spacing:-.03em;margin:0 0 6px;font-weight:800;text-wrap
   background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 16px;
   white-space:nowrap;transition:color .15s,border-color .15s}
 .lobrowse:hover{color:var(--accent);border-color:var(--accent)}
+/* the two buttons in this footer are one row, so one box. The primary one was an anchor with
+   .btn on it, and .btn sets no display, so an inline element carried block padding: taller
+   than its neighbour and sitting on a different baseline. */
+.lofoot .btn{margin:0;width:auto;display:inline-flex;align-items:center;gap:7px;
+  font-size:13px;padding:10px 16px;border:1px solid var(--accent);border-radius:10px}
 .relcar{font-size:9px;transition:transform .15s;display:inline-block;width:9px;text-align:center}
 .relsec.fold .relcar{transform:rotate(-90deg)}
 .relsec.fold .relrows{display:none}
@@ -1246,7 +1251,7 @@ export OPENROUTER_API_KEY=...
 
 python explorer/app.py --port 8000</pre>`+
       `<div class="lofoot">`+
-        `<a class="btn" href="https://github.com/Jianheng-Liu/SkillFabri" target="_blank" rel="noopener" style="width:auto;margin:0">↗ Repository and setup</a>`+
+        `<a class="btn" href="https://github.com/Jianheng-Liu/SkillFabri" target="_blank" rel="noopener">↗ Repository and setup</a>`+
         `<button class="lobrowse" onclick="show('browse')">Browse the graph instead →</button>`+
       `</div>`+
     `</div>`;}
@@ -1868,7 +1873,7 @@ async function renderMine(){const el=document.getElementById('v-mine');el.innerH
       `Sign in and this page becomes your own list — nobody else can see it or change it.</p>`+
       `<p>Everything else here works without an account: browsing, search, and every skill's `+
       `relation graph.</p><div class="lofoot">`+
-      `<button class="btn" style="width:auto;margin:0" onclick="askSignIn('Sign in to keep your own list.')">Sign in</button>`+
+      `<button class="btn" onclick="askSignIn('Sign in to keep your own list.')">Sign in</button>`+
       `<button class="lobrowse" onclick="show('browse')">Browse the graph instead →</button>`+
       `</div></div>`;
     return;}
