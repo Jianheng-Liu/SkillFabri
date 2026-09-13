@@ -25,11 +25,7 @@
   --nfill:0.24;--nfillc:0.40;--nhalo:0.12;--nstroke:1;
   --shadow:0 1px 3px rgba(20,20,20,.06),0 8px 28px rgba(20,20,20,.07);
 }
-@media (prefers-color-scheme:dark){:root{
-  --bg:#17171C;--panel:#212128;--panel2:#1C1C22;--ink:#ECECF2;--ink2:#B4BAC8;--muted:#7A7A86;--line:rgba(255,255,255,0.09);--line2:rgba(255,255,255,0.05);
-  --accent:#7A8DF2;--accent-soft:rgba(122,141,242,0.14);--same:#FF5C9B;--inter:#1FBE9C;--contain:#7A8DF2;--fav:#EE5555;
-  --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 34px rgba(0,0,0,.34);
-}}
+
 :root[data-theme=dark]{
   --bg:#17171C;--panel:#212128;--panel2:#1C1C22;--ink:#ECECF2;--ink2:#B4BAC8;--muted:#7A7A86;--line:rgba(255,255,255,0.09);--line2:rgba(255,255,255,0.05);
   --accent:#7A8DF2;--accent-soft:rgba(122,141,242,0.14);--same:#FF5C9B;--inter:#1FBE9C;--contain:#7A8DF2;--fav:#EE5555;
@@ -357,16 +353,12 @@ h1{font-size:27px;letter-spacing:-.03em;margin:0 0 6px;font-weight:800;text-wrap
 .dsum{color:var(--ink2);font-size:14px;line-height:1.55;margin:6px 0 14px}
 .steps{display:flex;flex-direction:column;align-items:flex-start;gap:4px;font-size:12px;margin:6px 0 16px}.steps span{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:2px 8px;color:var(--ink2);transition:background .12s,color .12s}
 .wflist{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
-.wstep.shl{background:var(--accent) !important;color:#fff !important;border-color:var(--accent) !important}
-.rshare{flex-basis:100%;font-size:11px;color:var(--accent);margin:2px 0 0 2px}
 .relcount{margin-left:auto;font-weight:400;color:var(--ink2)}
-.rsx{font-family:var(--mono);font-size:10px;color:var(--muted);flex:none;background:none;border:1px solid var(--line);
-  border-radius:6px;padding:1px 5px;cursor:pointer;transition:border-color .15s,color .15s}
-.rsx:hover{border-color:var(--inter);color:var(--inter)}
-.relitem .rshare{display:none}
-.relitem.open .rshare{display:block;margin:2px 0 8px 6px;padding-left:9px;border-left:2px solid var(--line);
-  font-size:11.5px;line-height:1.65;color:var(--ink2)}
-.relitem.open .rsx{border-color:var(--inter);color:var(--inter)}
+/* how many operations the two skills actually share — the judge's count, not a similarity */
+.rsh{font-family:var(--mono);font-size:10px;line-height:1;padding:2px 6px;border-radius:20px;
+  background:var(--panel2);border:1px solid var(--line);color:var(--muted);flex:none}
+.rsh.hot{color:var(--inter);border-color:color-mix(in srgb,var(--inter) 45%,transparent);
+  background:color-mix(in srgb,var(--inter) 10%,transparent)}
 .relsec{margin-top:18px}
 .relsec:first-child{margin-top:6px}
 .relhead{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 6px;font-weight:500;display:flex;align-items:center;gap:7px;min-height:18px}
@@ -489,8 +481,14 @@ h1{font-size:27px;letter-spacing:-.03em;margin:0 0 6px;font-weight:800;text-wrap
 .imv{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;color:var(--ink2)}
 .imwf{margin:0;padding-left:17px;display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--ink2)}
 .imwf li{border-radius:5px;padding:1px 6px;transition:background .12s,color .12s}
-.imwf li.shl{background:var(--accent);color:#fff}
-.imshare{font-family:var(--mono);font-size:10.5px;color:var(--accent);margin-top:8px}
+/* the two skills' wordings for one operation, side by side — a highlight on one skill's
+   list could only ever show half of the overlap */
+.imsh{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+.imsh li{display:grid;grid-template-columns:1fr 12px 1fr;gap:7px;align-items:center}
+.imsh li>span{min-width:0;font-size:12px;line-height:1.4}
+.imsh .shs{color:var(--ink2)}
+.imsh .shx{font-family:var(--mono);font-size:10.5px;color:var(--inter);text-align:center}
+.imshn{font-size:11.5px;color:var(--muted);margin:0 0 7px}.imshn b{color:var(--ink2);font-weight:600}
 .imrel{font-family:var(--mono);font-size:10.5px;border:1px solid;border-radius:6px;padding:2px 7px}
 .imio{display:inline-flex;align-items:center;gap:5px;margin-right:12px}
 .imio b{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:400}
@@ -546,8 +544,8 @@ body.spresizing{cursor:col-resize;user-select:none}
 </style>
 <script>
 /* set before first paint so the page never flashes the wrong theme; dark unless asked otherwise */
-(function(){try{document.documentElement.setAttribute('data-theme',localStorage.getItem('sf-theme')||'dark');}
-catch(e){document.documentElement.setAttribute('data-theme','dark');}})();
+(function(){try{document.documentElement.setAttribute('data-theme',localStorage.getItem('sf-theme')||'light');}
+catch(e){document.documentElement.setAttribute('data-theme','light');}})();
 </script>
 </head>
 <body>
@@ -783,7 +781,7 @@ window.closeNav=()=>{};                 // defined for real below; the nav butto
   addEventListener('keydown',e=>{if(e.key==='Escape')closeNav();});})();
 // the choice is shared with the landing page and survives a reload
 (function(){const r=document.documentElement,btn=document.getElementById('theme');
-  const cur=()=>r.getAttribute('data-theme')||'dark';
+  const cur=()=>r.getAttribute('data-theme')||'light';
   const paint=()=>{if(btn)btn.textContent=cur()==='dark'?'☾':'☀';};
   paint();   // <head> already applied the stored choice before first paint
   if(btn)btn.onclick=()=>{const t=cur()==='dark'?'light':'dark';
@@ -1115,9 +1113,6 @@ function renderSkillPage(s){const el=document.getElementById('skillpage');const 
       ((s.tech||[]).length?`<div class="eyebrow">Tech</div><div class="kv">`+
         s.tech.map(t=>`<span class="tag">${esc(t)}</span>`).join('')+`</div>`:'')+
       `<div id="sprel"></div></div></div>`;
-  const hlStep=sis=>{document.querySelectorAll('#spsteps .wstep.shl').forEach(w=>w.classList.remove('shl'));
-    (Array.isArray(sis)?sis:(sis>=0?[sis]:[])).forEach(si=>{const w=document.querySelector(`#spsteps .wstep[data-si="${si}"]`);if(w)w.classList.add('shl');});};
-  window._hlStep=hlStep;
   document.getElementById('spfav').onclick=async()=>{const r=await POST('/api/fav',{id:s.id});
     if(!r||r.error){askSignIn('Sign in to save this skill.');return;}
     if(r.on)FAVS.add(s.id);else FAVS.delete(s.id);const b=document.getElementById('spfav');
@@ -1155,7 +1150,7 @@ async function loadSPGraph(quick,auto){
   g.edges=g.edges.filter(e=>keep.has(e.a)&&keep.has(e.b));
   g.nodes=(g.nodes||[]).filter(n=>keep.has(n.id));
   const nodes=g.nodes.map(n=>({...n})),edges=g.edges.map(e=>({a:e.a,b:e.b,type:e.type,sim:e.sim,dir:e.dir||0}));
-  drawForce(document.getElementById('spg'),nodes,edges,{W:1160,H:800,center:SP.id,colorEdge:true,colorNode:capPalette(nodes),iters:Math.max(80,Math.min(240,Math.round(26000/Math.max(1,nodes.length)))),dur:quick?150:300,onClick:n=>{if(n.id>=0)showFullInfo(n.id,SP.id);},onHover:n=>window._hlStep&&window._hlStep((n&&n.sis)||[])});
+  drawForce(document.getElementById('spg'),nodes,edges,{W:1160,H:800,center:SP.id,colorEdge:true,colorNode:capPalette(nodes),iters:Math.max(80,Math.min(240,Math.round(26000/Math.max(1,nodes.length)))),dur:quick?150:300,onClick:n=>{if(n.id>=0)showFullInfo(n.id,SP.id);}});
   const c=document.getElementById('spgc');
   if(c){const k=nodes.filter(n=>n.tier===0).length;
     c.textContent=`${k} in focus · ${nodes.length} skills · ${edges.length} relations`;}
@@ -1233,7 +1228,7 @@ function renderSPList(g){const host=document.getElementById('sprel');if(!host)re
   const by={same:[],contain:[],intersect:[]};
   (g.edges||[]).forEach(e=>{const j=e.a===SP.id?e.b:(e.b===SP.id?e.a:null);if(j==null)return;
     const n=nmap[j];if(!n||!by[e.type])return;
-    by[e.type].push({id:j,name:n.name,sim:e.sim,sis:(n.sis||[]),dir:e.dir||0,type:e.type});});
+    by[e.type].push({id:j,name:n.name,sim:e.sim,dir:e.dir||0,type:e.type,shared:e.shared});});
   // one line per relation: what it is, what it is called, how close. The shared steps are
   // shown by highlighting the workflow above on hover, not by printing them here — at 300
   // relations that turned the panel into a thousand lines of blue text.
@@ -1244,14 +1239,17 @@ function renderSPList(g){const host=document.getElementById('sprel');if(!host)re
     if(!arr.length)return '';
     arr.sort((a,b)=>b.sim-a.sim);
     const rows=arr.map(r=>{const d=r.type==='contain'?(r.dir===1?' ⊇':' ⊆'):'';
-      const sl=(r.sis||[]).filter(k=>steps[k]);
-      return `<div class="relitem"><div class="relrow" data-id="${r.id}" data-sis="${sl.join(',')}">`+
+      // one number, not two. The row used to carry a second count from a step-embedding
+      // match that disagreed with this one in both directions, and the steps it lit up in the
+      // Workflow list above were that other measurement's, not this badge's. The overlap is
+      // spelled out in the card instead, where both skills' wording is on screen together.
+      const sh=(typeof r.shared==='number')?r.shared:null;
+      return `<div class="relitem"><div class="relrow" data-id="${r.id}">`+
         `<span class="rb" style="background:${col}">${t}</span>`+
         `<span class="rdir" title="${d?(r.dir===1?'this skill is the broader one':'the other skill is the broader one'):''}">${d.trim()}</span>`+
         `<span class="rn">${esc(r.name)}</span>`+
-        (sl.length?`<button class="rsx" title="show the shared operations">×${sl.length}</button>`:'')+
+        (sh!=null?`<span class="rsh${sh>=3?' hot':''}" title="${sh} concrete operation${sh===1?'':'s'} both skills perform">${sh}</span>`:'')+
         `<span class="rs">${(r.sim||0).toFixed(2)}</span></div>`+
-        (sl.length?`<div class="rshare">${sl.map(k=>'↔ '+esc(steps[k])).join('<br>')}</div>`:'')+
       `</div>`;}).join('');
     return `<div class="relsec" data-t="${t}"><div class="relhead" role="button" tabindex="0">`+
       `<span class="dot" style="background:${col}"></span>${label}`+
@@ -1270,12 +1268,9 @@ function renderSPList(g){const host=document.getElementById('sprel');if(!host)re
     const flip=()=>{const on=sec.classList.toggle('fold');SPFOLD[t]=on;};
     h.onclick=flip;
     h.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();flip();}};});
-  host.querySelectorAll('.rsx').forEach(b=>b.onclick=ev=>{
-    ev.stopPropagation();b.closest('.relitem').classList.toggle('open');});
   host.querySelectorAll('.relrow').forEach(r=>{r.onclick=()=>showFullInfo(+r.dataset.id,SP.id);
-    const sis=(r.dataset.sis||'').split(',').filter(x=>x!=='');
-    r.onmouseenter=()=>{window._hlStep&&window._hlStep(sis);window._hlNode&&window._hlNode(+r.dataset.id);};
-    r.onmouseleave=()=>{window._hlStep&&window._hlStep([]);window._hlNode&&window._hlNode(-1);};});}
+    r.onmouseenter=()=>window._hlNode&&window._hlNode(+r.dataset.id);
+    r.onmouseleave=()=>window._hlNode&&window._hlNode(-1);});}
 function closeSkill(){
   // walking a chain of skills should be reversible; only the first one closes the page
   if(SPHIST.length){openSkill(SPHIST.pop(),true);return;}
@@ -1302,13 +1297,18 @@ function showAddedInfo(i){
 function renderFullInfo(s,opts){
   opts=opts||{};const im=document.getElementById('infomodal');
   const chips=a=>(a&&a.length)?a.map(x=>`<span class="tag">${esc(x)}</span>`).join(''):'';
-  const hls=(s.hlsteps||[]);
-  // The card used to be nineteen equal rows, so nothing led. It is now ordered by what a reader
-  // actually asks: what does it do, who wrote it, what does it touch, how does it relate.
+  // Which operations the two skills share, in both their wordings — a highlight on one
+  // skill's list could only ever show half of an overlap. The judge kept the count and not
+  // the identities, so the pairing is reconstructed and the count line is the authority.
+  const sh=(s.shared||[]),shn=s.shared_n;
+  const shared=(s.anchor_name&&sh.length)
+    ? `<div class="imshn">${typeof shn==='number'?shn:sh.length} also in <b>${esc(s.anchor_name)}</b></div>`+
+      `<ul class="imsh">`+sh.map(p=>`<li><span class="shs">${esc(p[0])}</span>`+
+        `<span class="shx">↔</span><span class="shs">${esc(p[1])}</span></li>`).join('')+`</ul>`
+    : '';
   const grp=(label,body)=>body?`<div class="imsec"><div class="imk">${label}</div><div class="imv">${body}</div></div>`:'';
   const wf=(s.steps&&s.steps.length)
-    ? `<ol class="imwf">${s.steps.map((x,ix)=>`<li class="wstep${hls.includes(ix)?' shl':''}" data-si="${ix}">${esc(x)}</li>`).join('')}</ol>`
-      +((hls.length&&s.anchor_name)?`<div class="imshare">↔ ${hls.length} shared operation${hls.length>1?'s':''} with ${esc(s.anchor_name)}</div>`:'')
+    ? `<ol class="imwf">${s.steps.map((x,ix)=>`<li class="wstep" data-si="${ix}">${esc(x)}</li>`).join('')}</ol>`
     : '';
   const rel=Object.entries(s.counts||{}).sort()
     .map(([k,v])=>`<span class="imrel" style="border-color:${cssv(REL[k]||'--line')};color:${cssv(REL[k]||'--ink2')}">${k} ${v}</span>`).join('');
@@ -1337,6 +1337,7 @@ function renderFullInfo(s,opts){
       `</div>`+
       `<div class="imbody">`+
         grp('Workflow',wf)+
+        grp('Shared',shared)+
         grp('Relations',rel)+
         grp('Tech',chips(s.tech))+
         grp('Concern',chips(s.concern))+

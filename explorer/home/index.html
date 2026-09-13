@@ -23,7 +23,7 @@
     
   <style>
   /* one palette, two themes — the bundle reads these at load, the explorer mirrors them */
-  :root,:root[data-theme=dark]{
+  :root[data-theme=dark]{
     --sf-bg:#17171C; --sf-ink:#ECECF2; --sf-ink2:#A9A9B4; --sf-ink3:#7A7A86;
     --sf-card:#212128; --sf-panel2:#1C1C22;
     --sf-border:rgba(255,255,255,0.09); --sf-borderS:rgba(255,255,255,0.17);
@@ -37,7 +37,7 @@
     --sf-bandEdge:rgba(255,255,255,0.05);
     color-scheme:dark;
   }
-  :root[data-theme=light]{
+  :root,:root[data-theme=light]{
     --sf-bg:#F8F7F1; --sf-ink:#141414; --sf-ink2:#4D4D4D; --sf-ink3:#9A9A9A;
     --sf-card:#FFFFFF; --sf-panel2:#FAFAF6;
     --sf-border:rgba(0,0,0,0.08); --sf-borderS:rgba(0,0,0,0.14);
@@ -242,7 +242,7 @@
   </style>
   <script>
   /* set before first paint so the page never flashes the wrong theme; dark unless asked otherwise */
-  (function(){try{var t=localStorage.getItem('sf-theme')||'dark';
+  (function(){try{var t=localStorage.getItem('sf-theme')||'light';
     document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
   </script>
   <script src="icons.js" defer></script>

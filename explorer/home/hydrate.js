@@ -301,7 +301,7 @@
     // the toggle lives outside React so a re-render cannot drop it
     if(!document.querySelector('.sf-theme')){
       var tb=document.createElement('button');tb.className='sf-theme';tb.title='Light / dark';
-      var cur=function(){return document.documentElement.getAttribute('data-theme')||'dark';};
+      var cur=function(){return document.documentElement.getAttribute('data-theme')||'light';};
       tb.textContent=cur()==='dark'?'☾':'☀';
       tb.onclick=function(){var t=cur()==='dark'?'light':'dark';
         document.documentElement.setAttribute('data-theme',t);
