@@ -97,6 +97,9 @@ def load(graph_file="relations.json"):
         s = nodes[i]; tg = s.get("tags", {}) or {}
         return {"id": i, "name": s.get("name") or "?", "pop": int(s.get("popularity") or 0),
                 "activity": s.get("primary") or "—", "capability": s.get("capability") or "—",
+                # level 2 of the taxonomy, normalized to one abstraction — 322 values against
+                # capability's 992, which is the one dimension small enough to browse whole
+                "subcategory": s.get("cluster") or "—",
                 "object": s.get("object") or "—", "fine": s.get("fine") or "—",
                 "summary": (s.get("summary") or s.get("desc") or "")[:400],
                 "tech": (tg.get("tech") or [])[:10], "domain": tg.get("domain") or [], "concern": tg.get("concern") or [],
@@ -113,15 +116,23 @@ def load(graph_file="relations.json"):
             j, d, t = e[0], e[1], e[2]
             typ = "same" if t == 1 else ("contain" if t == 2 else "intersect")
             dir_ = e[3] if t == 2 else 0
-            rel[i].append({"id": j, "type": typ, "sim": round(1 - d, 3), "dir": dir_})
+            # index 4: how many concrete operations both skills perform. The judge counted it
+            # for every candidate pair and the count was dropped when the graph was written;
+            # bake_shared_steps.py put it back — on all three types, not just intersect, since
+            # the judge saw those pairs too. Older graphs do not have it.
+            shared = e[4] if len(e) > 4 else None
+            rel[i].append({"id": j, "type": typ, "sim": round(1 - d, 3), "dir": dir_,
+                           "shared": shared})
     for i in range(N): rel[i].sort(key=lambda r: ({"same": 0, "contain": 1, "intersect": 2}[r["type"]], -r["sim"]))
     # dimension groupings -> value -> [skill idxs] (popularity-sorted)
-    groups = {"activity": collections.defaultdict(list), "capability": collections.defaultdict(list),
+    groups = {"activity": collections.defaultdict(list), "subcategory": collections.defaultdict(list),
+              "capability": collections.defaultdict(list),
               "object": collections.defaultdict(list), "concern": collections.defaultdict(list),
               "domain": collections.defaultdict(list), "tool": collections.defaultdict(list),
               "occupation": collections.defaultdict(list)}
     for i, r in enumerate(recs):
         groups["activity"][r["activity"]].append(i); groups["capability"][r["capability"]].append(i)
+        groups["subcategory"][r["subcategory"]].append(i)
         groups["object"][r["object"]].append(i)
         for c in r["concern"]: groups["concern"][c].append(i)
         for dv in r["domain"]: groups["domain"][dv].append(i)
@@ -206,15 +217,57 @@ def load(graph_file="relations.json"):
 # that the >=K-matched-steps intersect rule counted.
 MATCH_TAU = 0.70
 
-def match_steps(i, j):
-    """ALL indices of skill i's steps that match some step of skill j (cos >= MATCH_TAU),
-    strongest first. Empty when there is no step-level overlap (or no step embeddings)."""
-    if D["Xst"] is None: return []
-    ai, bj = D["stepidx"][i], D["stepidx"][j]
-    if not ai or not bj: return []
-    best = (D["Xst"][ai] @ D["Xst"][bj].T).max(axis=1)
-    hits = [k for k in range(len(ai)) if best[k] >= MATCH_TAU]
-    return sorted(hits, key=lambda k: -float(best[k]))
+STOP = {"the", "a", "an", "and", "or", "of", "to", "in", "for", "with", "on", "by", "from",
+        "as", "at", "is", "are", "be", "all", "each", "any", "into", "that", "this", "it",
+        "its", "their", "via", "using", "use", "when", "then", "if", "not", "new"}
+
+
+def _words(t):
+    return {w for w in re.findall(r"[a-z0-9]+", t.lower()) if len(w) > 2 and w not in STOP}
+
+
+def shared_ops(i, j, n=None, cap=8):
+    """Operations both skills perform, paired as (i's wording, j's wording).
+
+    The judge counted these when the graph was built but recorded only how many, so which
+    steps it meant has to be recovered here. It already answered the hard question, though —
+    so `n` decides how many pairs come back and the ranking only decides which. A threshold
+    of its own would second-guess it, and did: a pair the judge scored 2 aligned at .699 and
+    .610 against a .70 cutoff and came back empty.
+
+    Step embeddings rank best. The deployed image ships without those vectors on purpose, so
+    word overlap stands in. Matching is one-to-one — a step that already found its counterpart
+    cannot be spent again."""
+    si = D["nodes"][i].get("steps") or []
+    sj = D["nodes"][j].get("steps") or []
+    if not si or not sj: return []
+    cand = []
+    # the deployment has no step vectors at all, so stepidx is None there — not an empty list
+    sx = D["stepidx"] if D["Xst"] is not None else None
+    ai, bj = (sx[i], sx[j]) if sx else (None, None)
+    if ai and bj:
+        M = D["Xst"][ai] @ D["Xst"][bj].T
+        for x in range(min(len(ai), len(si))):
+            for y in range(min(len(bj), len(sj))):
+                if float(M[x][y]) >= 0.45: cand.append((float(M[x][y]), x, y))
+    if not cand:
+        wb = [(y, _words(t)) for y, t in enumerate(sj)]
+        for x, a in enumerate(si):
+            wa = _words(a)
+            if not wa: continue
+            for y, wy in wb:
+                if not wy: continue
+                inter = len(wa & wy)
+                if inter >= 2: cand.append((inter / len(wa | wy), x, y))
+    cand.sort(reverse=True)
+    lim = min(n if isinstance(n, int) and n > 0 else cap, cap)
+    ua, ub, out = set(), set(), []
+    for _, x, y in cand:
+        if x in ua or y in ub: continue
+        ua.add(x); ub.add(y); out.append([si[x], sj[y]])
+        if len(out) >= lim: break
+    return out
+
 
 # ---------- helpers ----------
 def search_ids(q, limit=400):
@@ -402,7 +455,7 @@ def skill():
     if i < 0 or i >= D["N"]: return jsonify({"error": "not found"}), 404
     r = dict(D["recs"][i])
     r["relations"] = [{**e, "name": D["recs"][e["id"]]["name"], "activity": D["recs"][e["id"]]["activity"],
-                       "capability": D["recs"][e["id"]]["capability"], "sis": match_steps(i, e["id"])} for e in D["rel"][i]]   # ALL relations (+ every intersecting step)
+                       "capability": D["recs"][e["id"]]["capability"]} for e in D["rel"][i]]   # ALL relations
     r["counts"] = collections.Counter(e["type"] for e in D["rel"][i])
     return jsonify(r)
 
@@ -927,7 +980,9 @@ def graph():
             if b in ns:
                 k = (a, b) if a < b else (b, a)
                 if k in ekey: continue
-                ekey.add(k); edges.append({"a": a, "b": b, "type": e["type"], "sim": e["sim"], "dir": e["dir"] if e["type"] == "contain" else 0})
+                ekey.add(k); edges.append({"a": a, "b": b, "type": e["type"], "sim": e["sim"],
+                                           "dir": e["dir"] if e["type"] == "contain" else 0,
+                                           "shared": e.get("shared")})
     for j, s in near:                                  # center -> each candidate neighbour (no verified relation to center)
         k = (i, j) if i < j else (j, i)
         if k in ekey: continue
@@ -937,7 +992,7 @@ def graph():
     star = [e for e in edges if e["a"] == i or e["b"] == i]                       # every center↔neighbour edge (all nodes stay connected)
     rest = sorted([e for e in edges if e["a"] != i and e["b"] != i], key=lambda e: (prio[e["type"]], -e["sim"]))
     edges = star + rest[:800]                                                     # among-neighbour edges: keep the strongest (perf)
-    nodes = [{"id": k, "name": D["recs"][k]["name"], "activity": D["recs"][k]["activity"], "capability": D["recs"][k]["capability"], "pop": D["recs"][k]["pop"], "sis": (match_steps(i, k) if k != i else [])} for k in nodeset]
+    nodes = [{"id": k, "name": D["recs"][k]["name"], "activity": D["recs"][k]["activity"], "capability": D["recs"][k]["capability"], "pop": D["recs"][k]["pop"]} for k in nodeset]
     return jsonify({"center": i, "nodes": nodes, "edges": edges})
 
 # ---------- hero constellation: a diverse, popular sample + strong edges among it ----------
@@ -999,17 +1054,22 @@ def full():
     s = D["nodes"][i]; tg = s.get("tags", {}) or {}
     # optional anchor: the skill we opened this modal FROM -> highlight the overlapping workflow step
     anchor = int(request.args.get("anchor", -1))
-    hlsteps = match_steps(i, anchor) if 0 <= anchor < D["N"] and anchor != i else []
-    aname = D["recs"][anchor]["name"] if 0 <= anchor < D["N"] and anchor != i else ""
+    ok = 0 <= anchor < D["N"] and anchor != i
+    sn = next((e.get("shared") for e in D["rel"][i] if e["id"] == anchor), None) if ok else None
+    # only where the judge actually counted. A `near` neighbour is a similarity hit with no
+    # verdict behind it, and pairing its steps up would invent an overlap nobody checked.
+    shared = shared_ops(i, anchor, sn) if ok and isinstance(sn, int) else []
+    aname = D["recs"][anchor]["name"] if ok else ""
     return jsonify({"id": i, "name": s.get("name"), "summary": s.get("summary") or s.get("desc") or "",
         "activity": s.get("primary"), "capability": s.get("capability"), "object": s.get("object"),
+        "subcategory": s.get("cluster") or "",
         "fine": s.get("fine"), "subject": s.get("subject") or "", "steps": s.get("steps") or [],
         "tech": tg.get("tech") or [], "domain": tg.get("domain") or [], "concern": tg.get("concern") or [],
         "tools": s.get("tools") or [], "input": s.get("input") or [], "output": s.get("output") or [],
         "produces": s.get("produces") or [], "authority": s.get("authority") or [],
         "pop": int(s.get("popularity") or 0), "market": s.get("market") or "", "url": s.get("url") or "",
         "author": s.get("author") or "", "repo": s.get("repo") or "", "repo_url": s.get("repo_url") or "",
-        "hlsteps": hlsteps, "anchor_name": aname,
+        "shared": shared, "shared_n": sn, "anchor_name": aname,
         "counts": dict(collections.Counter(e["type"] for e in D["rel"][i]))})
 
 # `/` is the published brand design, mirrored from the Figma build so the landing page is exactly

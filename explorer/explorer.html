@@ -480,6 +480,8 @@ h1{font-size:27px;letter-spacing:-.03em;margin:0 0 6px;font-weight:800;text-wrap
 .imk{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .imv{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px;color:var(--ink2)}
 .imwf{margin:0;padding-left:17px;display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--ink2)}
+/* the taxonomy's middle level, between the activity and the fine-grained capability */
+.tag.sub{background:var(--panel2);border:1px solid var(--line);color:var(--ink2)}
 .imwf li{border-radius:5px;padding:1px 6px;transition:background .12s,color .12s}
 /* the two skills' wordings for one operation, side by side — a highlight on one skill's
    list could only ever show half of the overlap */
@@ -1324,6 +1326,7 @@ function renderFullInfo(s,opts){
             `<svg viewBox="0 0 20 20" fill="none" width="17" height="17">${(window.SF_ICONS||{})[s.activity]||window.SF_ICON_FALLBACK||''}</svg></span>`+
           `<div style="min-width:0"><h2>${esc(s.name)}</h2>`+
             `<div class="imtags"><span class="tag act" style="background:${actCol(s.activity)}">${esc(s.activity)}</span>`+
+            (s.subcategory?`<span class="tag sub">${esc(s.subcategory)}</span>`:'')+
             `<span class="tag cap">${esc(s.capability)}</span>`+
             (s.object?`<span class="tag">${esc(s.object)}</span>`:'')+`</div></div>`+
         `</div>`+
@@ -1359,7 +1362,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape'){if(document.getElementById('
 /* ===== OVERVIEW ===== */
 let HERO=null;
 /* ===== BROWSE (dimension picker → values → list) ===== */
-const DIMLABELS=[['pop','All'],['activity','Activity'],['capability','Capability'],['object','Object'],['concern','Concern'],['domain','Domain'],['tool','Tool'],['occupation','Occupation']];
+const DIMLABELS=[['pop','All'],['activity','Activity'],['subcategory','Subcategory'],['capability','Capability'],['object','Object'],['concern','Concern'],['domain','Domain'],['tool','Tool'],['occupation','Occupation']];
 // coverage is uneven, so these are filters ("show only the ones that have it"), never columns
 const HASOPTS=[['','anything'],['dups','has a duplicate'],['quality','has a quality rating'],['installs','has real install counts']];
 let BR={dim:'pop',val:null,page:0,q:'',vq:'',sort:'pop',has:''};
