@@ -994,23 +994,42 @@ def mine():
     return jsonify({"added": store.added(u["sub"]), "favorites": favs, "user": u})
 
 
+def added_rec(b):
+    """The stored shape of a skill the user owns, from whatever the client sent."""
+    return {"name": b.get("name") or "untitled", "summary": b.get("summary") or "", "steps": b.get("steps") or [],
+            "tech": b.get("tech") or [], "activity": b.get("activity") or "—", "capability": b.get("capability") or "—",
+            "object": (b.get("labels") or {}).get("object") if b.get("labels") else "—",
+            "neighbours": (b.get("neighbours") or [])[:45], "neigh_edges": (b.get("neigh_edges") or [])[:400],
+            "labels": b.get("labels"), "ts": b.get("ts") or 0,
+            # a merged skill carries the document it produced and the two it came from. Without
+            # the text My Skills would hold a summary of a file the user can no longer get back,
+            # and without the flag it could not be placed later or told apart from an upload.
+            "md": b.get("md") or "", "merged": bool(b.get("merged")),
+            "merged_from": b.get("merged_from") or None, "check": b.get("check") or None}
+
+
 @app.post("/api/save")
 def save_skill():
     u = need_user()
     if not u:
         return jsonify({"error": "sign in", "login": auth.enabled()}), 401
-    b = request.get_json(force=True) or {}
-    rec = {"name": b.get("name") or "untitled", "summary": b.get("summary") or "", "steps": b.get("steps") or [],
-           "tech": b.get("tech") or [], "activity": b.get("activity") or "—", "capability": b.get("capability") or "—",
-           "object": (b.get("labels") or {}).get("object") if b.get("labels") else "—",
-           "neighbours": (b.get("neighbours") or [])[:45], "neigh_edges": (b.get("neigh_edges") or [])[:400],
-           "labels": b.get("labels"), "ts": b.get("ts") or 0,
-           # a merged skill carries the document it produced and the two it came from; without
-           # the text My Skills would hold a summary of a file the user can no longer get back
-           "md": b.get("md") or "", "merged_from": b.get("merged_from") or None,
-           "check": b.get("check") or None}
-    store.add_skill(u["sub"], rec)
+    store.add_skill(u["sub"], added_rec(request.get_json(force=True) or {}))
     return jsonify({"ok": True})
+
+
+@app.post("/api/update_added")
+def update_added():
+    """Replace a row the user owns. Placing a merged skill edits its row rather than adding
+    a second one for the same file."""
+    b = request.get_json(force=True) or {}
+    u = need_user()
+    if not u:
+        up = up_call("POST", "/api/update_added", b)
+        if up:
+            return jsonify(up[0]), up[1]
+        return jsonify({"error": "sign in"}), 401
+    ok = store.update_added(u["sub"], int(b.get("id", -1)), added_rec(b))
+    return jsonify({"ok": ok})
 
 
 @app.post("/api/remove_added")

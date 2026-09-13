@@ -177,6 +177,21 @@ def add_skill(sub, rec) -> int:
         return cur.lastrowid
 
 
+def update_added(sub, row_id, rec) -> bool:
+    """Replace a row the user already owns, keeping its id and its place in the list.
+
+    A merged skill is saved before it has a graph, and placing it later is an edit of that
+    row rather than a second skill. Inserting instead would leave two entries for one file,
+    one of them permanently unplaced.
+    """
+    with _LOCK:
+        c = _conn()
+        cur = c.execute("UPDATE added SET payload=? WHERE id=? AND sub=?",
+                        (json.dumps(rec, ensure_ascii=False), row_id, sub))
+        c.commit()
+        return cur.rowcount > 0
+
+
 def remove_added(sub, row_id) -> bool:
     """Scoped to the owner: a row id from someone else's account matches nothing."""
     with _LOCK:

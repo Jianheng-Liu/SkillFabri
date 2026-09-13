@@ -1333,7 +1333,8 @@ function showAddedInfo(i){
     name:r.name,summary:r.summary,steps:r.steps,activity:r.activity,capability:r.capability,
     object:r.object,tech:r.tech,concern:L.concern,domain:L.domain,tools:L.tools,
     input:L.input,output:L.output,produces:L.produces,authority:L.authority,subject:L.subject,
-    counts:counts,author:'you',md:r.md||'',merged_from:r.merged_from||null},
+    counts:counts,author:'you',md:r.md||'',merged_from:r.merged_from||null,
+    merged:!!r.merged,placed:(r.neighbours||[]).length>0},
     {open:`showAdded(MINE.added[${i}])`,mi:i});}
 
 function renderFullInfo(s,opts){
@@ -1396,13 +1397,19 @@ function renderFullInfo(s,opts){
         (s.url?`<a class="imsrc" href="${esc(s.url)}" target="_blank" rel="noopener">↗ View source</a>`:'')+
         // only where the judge counted enough shared operations for the two to be one skill.
         // The threshold is the server's, not a second opinion held here.
-        (canMerge(s)?`<button class="imsrc" onclick="openMerge(${s.anchor},${s.id})">⧉ Merge these two</button>`:'')+
+        (canMerge(s)?`<button class="imsrc" title="Merge with ${esc(s.anchor_name)}" `+
+          `onclick="openMerge(${s.anchor},${s.id})">⧉ Merge with ${esc(clip(s.anchor_name,22))}</button>`:'')+
         // a merged skill carries the file it produced, and this is where it is got back
         (s.md&&opts.mi!=null?`<button class="imsrc" onclick="mdDownload(${opts.mi})">↓ SKILL.md</button>`:'')+
-        `<button class="btn" style="width:auto;margin:0" onclick="closeInfo();${opts.open}">◈ Open graph →</button>`+
+        // a merge is written before it is placed, so until it has been there is no graph to
+        // open. Offering one anyway would draw an empty canvas and look broken.
+        (s.merged&&!s.placed&&opts.mi!=null
+          ? `<button class="btn" style="width:auto;margin:0" onclick="placeMerged(${opts.mi})">◈ Place in the graph →</button>`
+          : `<button class="btn" style="width:auto;margin:0" onclick="closeInfo();${opts.open}">◈ Open graph →</button>`)+
       `</div>`+
     `</div>`;
   im.classList.add('on');}
+function clip(t,n){t=''+(t||'');return t.length>n?t.slice(0,n-1)+'…':t;}
 function canMerge(s){
   return s&&typeof s.id==='number'&&s.anchor>=0&&typeof s.shared_n==='number'
     &&s.shared_n>=((CAPS&&CAPS.min_shared)||3);}
@@ -1594,11 +1601,12 @@ async function mgSave(){
     steps:(r.steps||[]).slice(0,24),
     tech:r.tech||[],activity:agree('activity'),capability:agree('capability'),
     labels:{summary:r.summary||'',object:r.object||'',subject:r.subject||'',tech:r.tech||[]},
-    md:r.skill_md||'',check:r._check||null,
+    md:r.skill_md||'',check:r._check||null,merged:true,
     merged_from:par.map(x=>({id:x.id,name:x.name})),
-    neighbours:par.map(x=>({id:x.id,name:x.name,summary:'',activity:x.activity,capability:x.capability||'',
-                            pop:0,sim:1,type:'contain',broader:'new'})),
-    neigh_edges:[],ts:Date.now()};
+    // no graph yet, and none invented. Where a merged skill sits among 14,460 others is a
+    // question for the embedding, not something derivable from the two it came from, so the
+    // card offers to place it and this stays empty until it has been.
+    neighbours:[],neigh_edges:[],ts:Date.now()};
   let ok=false;
   try{if(ME&&ME.linked){const u=await POST('/api/sync',rec);ok=!!(u&&u.ok);
        if(!ok)ok=!!(await POST('/api/save',rec)).ok;}
@@ -1746,13 +1754,29 @@ async function renderAdd(){const el=document.getElementById('v-add');
   box.addEventListener('input',()=>{document.getElementById('fname').textContent='';});
   document.getElementById('a-go').onclick=()=>placeSkill(box.value.trim());}
 let LAST=null;
-async function placeSkill(md){const btn=document.getElementById('a-go'),res=document.getElementById('a-res');
+/* Run the placement pipeline over a merged skill already in My Skills. It goes through the
+   same four stages as an upload, because it is the same question: where does this document sit
+   among the 14,460. The one difference is the ending — the row already exists, so the result
+   is written back to it instead of creating a second entry for the same file. */
+async function placeMerged(i){
+  const r=(MINE.added||[])[i];if(!r||!r.md)return;
+  closeInfo();
+  // R.add first: show() starts its own render when the view has never been opened, and two
+  // renders racing over the same panel can wipe the document out of the box again
+  R.add=1;show('add');await renderAdd();
+  const box=document.getElementById('a-md');
+  if(!box)return;                       // the Add view is explaining what it is missing
+  box.value=r.md;
+  placeSkill(r.md,{row:r._id,md:r.md,merged_from:r.merged_from||null,name:r.name});}
+
+async function placeSkill(md,opts){opts=opts||{};const btn=document.getElementById('a-go'),res=document.getElementById('a-res');
+  if(!btn||!res)return;
   if(!md){res.innerHTML='<div class="empty">Drop a SKILL.md, or paste its contents above.</div>';return;}
   const body={md};
   const uname=(md.match(/^\s*name:\s*(.+)$/m)||[])[1] || (md.match(/^#\s+(.+)$/m)||[])[1] || 'your skill';
   btn.disabled=true;btn.textContent='Running…';
   res.innerHTML=`<div class="pipe"><div class="st on">1 · label</div><div class="st">2 · embed</div><div class="st">3 · neighbours</div><div class="st">4 · relations</div></div><div class="empty"><span class="spin"></span><div style="margin-top:12px">labelling → embedding → finding neighbours → typing relations…</div></div>`;
-  try{const r=await POST('/api/place',body);if(r.error){res.innerHTML=`<div class="empty">${esc(r.error)}</div>`;}else{LAST={...r,_name:(uname||(r.labels&&r.labels.name)||'your skill'),_body:body};renderPlacement(LAST);}}
+  try{const r=await POST('/api/place',body);if(r.error){res.innerHTML=`<div class="empty">${esc(r.error)}</div>`;}else{LAST={...r,_name:(opts.name||uname||(r.labels&&r.labels.name)||'your skill'),_body:body,_opts:opts};renderPlacement(LAST);}}
   catch(e){res.innerHTML='<div class="empty">Something went wrong. Is the backend running?</div>';}
   btn.disabled=false;btn.textContent='◈ Run pipeline → place in graph';}
 function renderPlacement(r){const res=document.getElementById('a-res');const nm=r._name;const typed=r.neighbours.filter(n=>n.type);
@@ -1779,9 +1803,15 @@ function renderPlacement(r){const res=document.getElementById('a-res');const nm=
   document.getElementById('openfull').onclick=openPlacedFull;
   // a skill you placed is yours — it lands in My Skills without asking
   (async()=>{try{
+    const o=r._opts||{};
     const rec={name:nm,summary:(L&&L.summary)||'',steps:(L&&L.steps)||[],tech:(L&&L.tech)||[],
       activity:r.suggested_activity,capability:r.suggested_capability,labels:L,
-      neighbours:r.neighbours,neigh_edges:r.neigh_edges,ts:Date.now()};
+      neighbours:r.neighbours,neigh_edges:r.neigh_edges,ts:Date.now(),
+      md:o.md||'',merged:!!o.row,merged_from:o.merged_from||null};
+    if(o.row){const t=document.getElementById('savedmsg');
+      const ok=await updateAdded(o.row,rec);
+      if(t)t.innerHTML=ok?'✓ Placed, and <b>My Skills</b> updated':'⚠ Placed, but saving the graph failed';
+      return;}
     // linked to an upstream: the skill belongs to that account, so it goes straight there and
     // is on every other device you sign in from. Otherwise it stays in this instance.
     if(ME&&ME.linked){const u=await POST('/api/sync',rec);
@@ -1794,6 +1824,13 @@ function renderPlacement(r){const res=document.getElementById('a-res');const nm=
     const t=document.getElementById('savedmsg');
     if(t)t.innerHTML='✓ Saved to <b>My Skills</b>';
   }catch(_){}})();}
+async function updateAdded(id,rec){
+  // an older upstream has no update route. Adding the new row before removing the old one
+  // means the worst case is a duplicate rather than a skill that is gone.
+  try{const u=await POST('/api/update_added',Object.assign({id},rec));if(u&&u.ok)return true;}catch(_){}
+  try{const a=await POST(ME&&ME.linked?'/api/sync':'/api/save',rec);
+      if(a&&a.ok){await POST('/api/remove_added',{id});return true;}}catch(_){}
+  return false;}
 function openPlacedFull(){if(!LAST)return;const L=LAST.labels;showAdded({name:LAST._name,summary:(L&&L.summary)||'',steps:(L&&L.steps)||[],tech:(L&&L.tech)||[],activity:LAST.suggested_activity,capability:LAST.suggested_capability,neighbours:LAST.neighbours,neigh_edges:LAST.neigh_edges});}
 
 /* ===== MY SKILLS ===== */
@@ -1810,15 +1847,30 @@ async function renderMine(){const el=document.getElementById('v-mine');el.innerH
       `</div></div>`;
     return;}
   const m=await API('/api/mine');MINE=m;FAVS=new Set(m.favorites.map(s=>s.id));
-  el.innerHTML=`<h1>My Skills</h1><p class="lede">Skills you saved from the market, and skills you added yourself.</p>`+
-    `<div class="eyebrow">Added by you · ${m.added.length}</div><div class="grid" id="mineadd"></div>`+
+  // three lists, because a merged skill is not an upload: it was written here, it carries the
+  // document it produced, and until it has been placed it has no graph. Mixed into the uploads
+  // it would look like one that failed to find neighbours.
+  const mine=(m.added||[]).map((s,i)=>Object.assign({},s,{_i:i}));
+  const mg=mine.filter(s=>s.merged),up=mine.filter(s=>!s.merged);
+  el.innerHTML=`<h1>My Skills</h1><p class="lede">Skills you saved from the market, skills you added yourself, and skills merged from two.</p>`+
+    (mg.length?`<div class="eyebrow">Merged · ${mg.length}</div><div class="grid" id="minemg"></div>`:'')+
+    `<div class="eyebrow">Added by you · ${up.length}</div><div class="grid" id="mineadd"></div>`+
     `<div class="eyebrow">Favourites · ${m.favorites.length}</div><div class="grid" id="minefav"></div>`;
+  const mineCard=s=>`<div class="card" data-i="${s._i}"><button class="favb on" data-del="${s._id}" title="Remove">✕</button>`+
+    `<div class="top"><span class="nm">${esc(s.name)}</span></div><div class="sum">${esc(s.summary)}</div>`+
+    `<div class="meta"><span class="tag act" style="background:${actCol(s.activity)}">${esc(s.activity)}</span>`+
+    `<span class="tag cap">${esc(s.capability)}</span>`+
+    `<span class="tag">${(s.neighbours||[]).length?`${s.neighbours.length} relations`:'not placed yet'}</span></div></div>`;
+  const wireMine=host=>{if(!host)return;
+    host.querySelectorAll('.card').forEach(c=>c.onclick=e=>{if(e.target.closest('[data-del]'))return;
+      showAddedInfo(+c.dataset.i);});   // the card opens the card, as it does everywhere else
+    host.querySelectorAll('[data-del]').forEach(b=>b.onclick=async e=>{e.stopPropagation();
+      await POST('/api/remove_added',{id:+b.dataset.del});renderMine();});};
+  const mgh=document.getElementById('minemg');
+  if(mgh){mgh.innerHTML=mg.map(mineCard).join('');wireMine(mgh);}
   const add=document.getElementById('mineadd');
-  add.innerHTML=m.added.length?m.added.map((s,i)=>`<div class="card" data-i="${i}"><button class="favb on" data-del="${s._id}" title="Remove">✕</button><div class="top"><span class="nm">${esc(s.name)}</span></div><div class="sum">${esc(s.summary)}</div><div class="meta"><span class="tag act" style="background:${actCol(s.activity)}">${esc(s.activity)}</span><span class="tag cap">${esc(s.capability)}</span><span class="tag">${(s.neighbours||[]).length} relations</span></div></div>`).join(''):'<div class="empty" style="grid-column:1/-1">Nothing yet — go to <b>Add My Skill</b> and save one.</div>';
-  add.querySelectorAll('.card').forEach(c=>c.onclick=e=>{if(e.target.closest('[data-del]'))return;
-    showAddedInfo(+c.dataset.i);});   // the card opens the card, as it does everywhere else
-  add.querySelectorAll('[data-del]').forEach(b=>b.onclick=async e=>{e.stopPropagation();
-    await POST('/api/remove_added',{id:+b.dataset.del});renderMine();});
+  add.innerHTML=up.length?up.map(mineCard).join(''):'<div class="empty" style="grid-column:1/-1">Nothing yet — go to <b>Add My Skill</b> and save one.</div>';
+  wireMine(add);
   const fav=document.getElementById('minefav');fav.innerHTML=m.favorites.length?m.favorites.map(cardHTML).join(''):'<div class="empty" style="grid-column:1/-1">No favourites — tap ♡ on any skill.</div>';wireCards(fav);}
 let SPA={min:0.70,s:null,_t:null};
 function showAdded(s){const el=document.getElementById('skillpage');const typed=(s.neighbours||[]).filter(n=>n.type);
