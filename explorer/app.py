@@ -92,12 +92,19 @@ def load(graph_file="relations.json"):
     else:
         print("[explorer] skill_embeddings.npy absent — 'similar' layer + add-your-skill disabled (see README to enable)")
     N = len(nodes)
+    # A subcategory is a pair (activity, name), not a name: pass 3 levelled every name to one
+    # abstraction, and 25 of them land under more than one activity on purpose —
+    # `workflow-automation` under fourteen. Grouping on the bare name would collapse fourteen
+    # distinct groups into one, so ambiguous names carry their activity and the rest stay clean.
+    def sub_key(r):
+        return f"{r['subcategory']} · {r['activity']}" if r["subcategory"] in SUB_AMBIG else r["subcategory"]
+
     # compact per-skill record for the client
     def rec(i):
         s = nodes[i]; tg = s.get("tags", {}) or {}
         return {"id": i, "name": s.get("name") or "?", "pop": int(s.get("popularity") or 0),
                 "activity": s.get("primary") or "—", "capability": s.get("capability") or "—",
-                # level 2 of the taxonomy, normalized to one abstraction — 322 values against
+                # level 2 of the taxonomy, normalized to one abstraction — 322 groups against
                 # capability's 992, which is the one dimension small enough to browse whole
                 "subcategory": s.get("cluster") or "—",
                 "object": s.get("object") or "—", "fine": s.get("fine") or "—",
@@ -108,6 +115,10 @@ def load(graph_file="relations.json"):
                 "updated": s.get("updated") or "", "occupation": s.get("occupation") or "",
                 "quality": s.get("quality") or {}, "pop_src": s.get("pop_src") or "",
                 "tools": (s.get("tools") or [])[:10]}
+    _byname = collections.defaultdict(set)
+    for _s in nodes: _byname[_s.get("cluster") or "—"].add(_s.get("primary") or "—")
+    SUB_AMBIG = {k for k, v in _byname.items() if len(v) > 1}
+
     recs = [rec(i) for i in range(N)]
     # typed relation adjacency (undirected same/intersect; directed contain)
     rel = [[] for _ in range(N)]
@@ -132,7 +143,7 @@ def load(graph_file="relations.json"):
               "occupation": collections.defaultdict(list)}
     for i, r in enumerate(recs):
         groups["activity"][r["activity"]].append(i); groups["capability"][r["capability"]].append(i)
-        groups["subcategory"][r["subcategory"]].append(i)
+        groups["subcategory"][sub_key(r)].append(i)
         groups["object"][r["object"]].append(i)
         for c in r["concern"]: groups["concern"][c].append(i)
         for dv in r["domain"]: groups["domain"][dv].append(i)
@@ -448,7 +459,7 @@ def tree():
 @cached
 def dims():
     out = {}
-    for dim in ("activity", "capability", "object", "concern", "domain", "tool", "occupation"):
+    for dim in ("activity", "subcategory", "capability", "object", "concern", "domain", "tool", "occupation"):
         vals = sorted(((v, len(ids)) for v, ids in D["groups"][dim].items()), key=lambda x: -x[1])
         out[dim] = [{"val": v, "count": c} for v, c in vals]
     return jsonify(out)
