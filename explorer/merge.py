@@ -38,18 +38,32 @@ def ready() -> bool:
 
 
 def _docs():
+    """The bundle, opened once, or None if this instance does not have it.
+
+    None rather than an exception: the deployment ships without the documents on purpose, and
+    the panel that explains that has to be able to ask about a pair first. Raising here made
+    every such question a 500, so the explanation never appeared and the button looked broken.
+    """
     global _z
     if _z is None:
-        _z = zipfile.ZipFile(DOCS)
+        if not DOCS.exists():
+            return None
+        try:
+            _z = zipfile.ZipFile(DOCS)
+        except (zipfile.BadZipFile, OSError):
+            return None                      # half-downloaded, and no more useful than absent
     return _z
 
 
 def source(i: int) -> str:
     """One skill's own SKILL.md, in full. Read on demand: a merge touches two of twelve
     thousand, and holding them all would cost 100 MB for a feature most readers never use."""
+    z = _docs()
+    if z is None:
+        return ""
     try:
-        return _docs().read(f"{int(i)}.md").decode("utf-8", "ignore")
-    except KeyError:
+        return z.read(f"{int(i)}.md").decode("utf-8", "ignore")
+    except (KeyError, OSError):
         return ""
 
 

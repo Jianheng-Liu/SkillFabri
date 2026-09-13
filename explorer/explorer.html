@@ -500,7 +500,11 @@ h1{font-size:27px;letter-spacing:-.03em;margin:0 0 6px;font-weight:800;text-wrap
   font-size:13.5px;font-weight:600;color:var(--ink2);background:var(--panel);border:1px solid var(--line);
   border-radius:9px;padding:9px 16px;transition:color .15s,border-color .15s}
 .imsrc:hover{color:var(--accent);border-color:var(--accent)}
-.imfoot .btn{margin-left:auto}
+/* three buttons on one line, so one box: same padding, same border, same type size. The
+   primary one only differs in weight. Without the border it also sat 2px taller, because a
+   border counts toward the box and none of the others were missing one. */
+.imfoot .btn{margin:0 0 0 auto;width:auto;display:inline-flex;align-items:center;gap:7px;
+  font-size:13.5px;padding:9px 18px;border:1px solid var(--accent);border-radius:9px}
 /* Merge. Its own layer above the card that launches it, so closing it returns you to the
    skill you were reading rather than to nothing. */
 #mergemodal{position:fixed;inset:0;z-index:95;display:none;align-items:center;justify-content:center;background:rgba(8,10,16,.5);padding:22px;backdrop-filter:blur(3px)}
@@ -1404,8 +1408,8 @@ function renderFullInfo(s,opts){
         // a merge is written before it is placed, so until it has been there is no graph to
         // open. Offering one anyway would draw an empty canvas and look broken.
         (s.merged&&!s.placed&&opts.mi!=null
-          ? `<button class="btn" style="width:auto;margin:0" onclick="placeMerged(${opts.mi})">◈ Build its graph →</button>`
-          : `<button class="btn" style="width:auto;margin:0" onclick="closeInfo();${opts.open}">◈ Open graph →</button>`)+
+          ? `<button class="btn" onclick="placeMerged(${opts.mi})">◈ Build its graph →</button>`
+          : `<button class="btn" onclick="closeInfo();${opts.open}">◈ Open graph →</button>`)+
       `</div>`+
     `</div>`;
   im.classList.add('on');}
@@ -1447,7 +1451,7 @@ async function openMerge(a,b){
   el.classList.add('on');
   let p;try{p=await API(`/api/merge/pair?a=${a}&b=${b}`);}catch(e){p={error:'could not reach the server'};}
   if(p.error){el.innerHTML=mgShell(`<div class="mgfail">${esc(p.error)}</div>`,
-    `<button class="btn" style="width:auto;margin:0 0 0 auto" onclick="closeMerge()">Close</button>`);return;}
+    `<button class="btn" onclick="closeMerge()">Close</button>`);return;}
   mgConfirm(p);}
 
 function mgWhyMissing(why){
@@ -1460,6 +1464,26 @@ function mgWhyMissing(why){
   return `<div class="localonly" style="margin:0">`+
     need.map(([t,d,c])=>`<p><b>${t}</b> ${d}</p><pre class="localcmd">${esc(c)}</pre>`).join('')+
     `<p style="margin-top:12px">Restart the server afterwards.</p></div>`;}
+
+function mgLocalOnly(){
+  return `<div class="localonly" style="margin:0">`+
+    `<p>Merging reads both <b>SKILL.md</b> in full and calls a model to write the third. That `+
+    `needs the documents and an API key, and neither belongs on a public site where every `+
+    `click would spend someone else's money.</p>`+
+    `<p>Everything you are looking at works here without them.</p>`+
+    `<div class="eyebrow">Run it yourself</div>`+
+    `<pre class="localcmd">conda create -n skillfabri python=3.11 -y
+conda activate skillfabri
+pip install -r requirements.txt
+
+<span class="cmt"># the documents a merge is written from</span>
+python tools/fetch_data.py --only skillmd.zip
+export OPENROUTER_API_KEY=...
+
+python explorer/app.py --port 8000</pre>`+
+    `<div class="lofoot" style="margin-top:12px">`+
+      `<a class="imsrc" href="https://github.com/Jianheng-Liu/SkillFabri" target="_blank" rel="noopener">↗ Repository and setup</a>`+
+    `</div></div>`;}
 
 function mgConfirm(p){
   MG.info=p;
@@ -1485,12 +1509,14 @@ function mgConfirm(p){
           `the documents.`
         : `Merging wants at least ${p.min_shared}. Below that the two do different work and one `+
           `file would have to say both things.`)+`</div></div></div>`;
-    return mgPaint(body,`<button class="btn" style="width:auto;margin:0 0 0 auto" onclick="closeMerge()">Close</button>`);}
+    return mgPaint(body,`<button class="btn" onclick="closeMerge()">Close</button>`);}
 
   if(!p.ready){
+    // two readers again. Here it is off on purpose and the answer is to run it yourself; on a
+    // local install it is off because a file or a key is missing, and the answer is the command
     body+=`<div class="imsec"><div class="imk">Setup</div><div class="imv" style="display:block">`+
-      mgWhyMissing(p.why)+`</div></div>`;
-    return mgPaint(body,`<button class="btn" style="width:auto;margin:0 0 0 auto" onclick="closeMerge()">Close</button>`);}
+      ((ME&&ME.upstream)?mgWhyMissing(p.why):mgLocalOnly())+`</div></div>`;
+    return mgPaint(body,`<button class="btn" onclick="closeMerge()">Close</button>`);}
 
   body+=`<div class="imsec"><div class="imk">What happens</div><div class="imv" style="display:block">`+
     `<div class="mgnote">Both documents go to the model whole, not summarised, because a merge `+
@@ -1499,7 +1525,7 @@ function mgConfirm(p){
     `</div></div></div>`;
   mgPaint(body,
     `<button class="imsrc" onclick="closeMerge()">Cancel</button>`+
-    `<button class="btn" style="width:auto;margin:0 0 0 auto" onclick="mgRun()">Merge →</button>`);}
+    `<button class="btn" onclick="mgRun()">Merge →</button>`);}
 
 function mgPaint(body,foot){document.getElementById('mergemodal').innerHTML=mgShell(body,foot);}
 
@@ -1545,13 +1571,13 @@ async function mgRun(){
 function mgError(msg,why){
   if(MG.tick){clearInterval(MG.tick);MG.tick=null;}
   mgPaint(`<div class="mgfail">${esc(msg)}</div>`+(why&&(!why.docs||!why.api_key)?mgWhyMissing(why):''),
-    `<button class="btn" style="width:auto;margin:0 0 0 auto" onclick="closeMerge()">Close</button>`);}
+    `<button class="btn" onclick="closeMerge()">Close</button>`);}
 
 function mgResult(r){
   if(MG.tick){clearInterval(MG.tick);MG.tick=null;}
   if(r.mergeable===false){
     return mgPaint(`<div class="mgfail"><b>These two are not one skill.</b><br>${esc(r.why||'')}</div>`,
-      `<button class="btn" style="width:auto;margin:0 0 0 auto" onclick="closeMerge()">Close</button>`);}
+      `<button class="btn" onclick="closeMerge()">Close</button>`);}
   MG.res=r;
   const c=r._check||{},ret=c.retention;
   // the number, not a tick. Retention is a median of 0.97 and a mean of 0.83, which means the
@@ -1570,7 +1596,7 @@ function mgResult(r){
     `<pre class="mgmd">${esc(r.skill_md||'')}</pre>${drop}`,
     `<button class="imsrc" onclick="mgDownload()">↓ SKILL.md</button>`+
     `<button class="imsrc" onclick="mgCopy(this)">Copy</button>`+
-    `<button class="btn" style="width:auto;margin:0 0 0 auto" id="mgsave" onclick="mgSave()">Save to My Skills</button>`);}
+    `<button class="btn" id="mgsave" onclick="mgSave()">Save to My Skills</button>`);}
 
 function mdDownload(i){const r=(MINE.added||[])[i];if(!r||!r.md)return;
   saveText(r.md,(r.name||'skill')+'.md');}
