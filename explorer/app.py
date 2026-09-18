@@ -1185,7 +1185,13 @@ def full():
     sn = next((e.get("shared") for e in D["rel"][i] if e["id"] == anchor), None) if ok else None
     # only where the judge actually counted. A `near` neighbour is a similarity hit with no
     # verdict behind it, and pairing its steps up would invent an overlap nobody checked.
-    shared = shared_ops(i, anchor, sn) if ok and isinstance(sn, int) else []
+    # The count is the judge's, from when the graph was built; which operations it meant was
+    # never recorded. Reconstructing the pairing afterwards from shared words put a list of
+    # three under a heading that said five, on a pair whose five steps correspond one to one —
+    # it missed "audit code for security vulnerabilities" against "identify security flaws and
+    # OWASP violations", which share one word. A card that contradicts itself is worse than a
+    # card that says only what it knows.
+    shared = []
     aname = D["recs"][anchor]["name"] if ok else ""
     return jsonify({"id": i, "name": s.get("name"), "summary": s.get("summary") or s.get("desc") or "",
         "activity": s.get("primary"), "capability": s.get("capability"), "object": s.get("object"),

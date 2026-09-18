@@ -1372,10 +1372,10 @@ function renderFullInfo(s,opts){
   // skill's list could only ever show half of an overlap. The judge kept the count and not
   // the identities, so the pairing is reconstructed and the count line is the authority.
   const sh=(s.shared||[]),shn=s.shared_n;
-  const shared=(s.anchor_name&&sh.length)
-    ? `<div class="imshn">${typeof shn==='number'?shn:sh.length} also in <b>${esc(s.anchor_name)}</b></div>`+
-      `<ul class="imsh">`+sh.map(p=>`<li><span class="shs">${esc(p[0])}</span>`+
-        `<span class="shx">↔</span><span class="shs">${esc(p[1])}</span></li>`).join('')+`</ul>`
+  // the count, without a pairing that was guessed after the fact — see app.py's /api/full
+  const shared=(s.anchor_name&&typeof shn==='number'&&shn>0)
+    ? `<div class="imshn"><b>${shn}</b> operation${shn===1?'':'s'} also in `+
+      `<b>${esc(s.anchor_name)}</b></div>`
     : '';
   const grp=(label,body)=>body?`<div class="imsec"><div class="imk">${label}</div><div class="imv">${body}</div></div>`:'';
   const wf=(s.steps&&s.steps.length)
