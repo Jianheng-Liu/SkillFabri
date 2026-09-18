@@ -626,10 +626,9 @@ def corpus_id():
 # ---------- merging two skills into one ----------
 import merge as _merge
 
-# The measured pair. gpt-5.4 at medium effort retained a median 0.97 of the strings it carried
-# across a stratified sample; the cost is about $0.16 a merge and output tokens are roughly two
-# thirds of it, so a cheaper model saves less than it looks like it would. Override per request.
-MERGE_MODEL = os.environ.get("SF_MERGE_MODEL", "openai/gpt-5.4")
+# The model is merge.py's business: it picks by provider, because a name valid at one endpoint
+# is refused at the other. Naming it twice is how the server came to send OpenRouter's model id
+# to the CRS proxy, which answered "no access to this model" and meant it.
 
 
 def _shared(a, b):
@@ -657,7 +656,10 @@ def merge_pair():
               "steps": len(D["nodes"][a].get("steps") or []), "chars": len(_merge.source(a))},
         "b": {"id": b, "name": rb["name"], "activity": rb["activity"], "capability": rb["capability"],
               "steps": len(D["nodes"][b].get("steps") or []), "chars": len(_merge.source(b))},
-        "shared": sh, "ops": shared_ops(a, b, sh) if isinstance(sh, int) else [],
+        # no reconstructed pairing: the judge recorded how many, never which, and rebuilding
+        # it from shared words found 3 of 5 on a pair that corresponds one to one. The merge's
+        # first step reads both documents and answers it.
+        "shared": sh,
         "eligible": _merge.eligible(sh, a, b), "min_shared": _merge.MIN_SHARED,
         # 1,722 skills reached the corpus through a listing rather than a file, so they have a
         # row and no document. The count says merge and the merge cannot read them, and the
@@ -676,31 +678,33 @@ def merge_run():
     """
     body = request.get_json(force=True) or {}
     a, b = int(body.get("a", -1)), int(body.get("b", -1))
-    model = (body.get("model") or "").strip() or MERGE_MODEL
+    model = (body.get("model") or "").strip() or _merge.MODEL
     effort = (body.get("effort") or "medium").strip()
 
     def stream():
-        def ev(kind, **d):
-            return "data: " + json.dumps({"t": kind, **d}) + "\n\n"
+        def ev(d):
+            return "data: " + json.dumps(d) + "\n\n"
         if not _merge.ready():
-            yield ev("error", message="merging is not set up on this instance",
-                     why=_merge.available()); return
+            yield ev({"t": "error", "message": "merging is not set up on this instance",
+                      "why": _merge.available()}); return
         if not (0 <= a < D["N"] and 0 <= b < D["N"]):
-            yield ev("error", message="no such skill"); return
+            yield ev({"t": "error", "message": "no such skill"}); return
         sh = _shared(a, b)
         if not (isinstance(sh, int) and sh >= _merge.MIN_SHARED):
-            yield ev("error", message=f"these two share {sh or 0} operations; "
-                                      f"merging wants at least {_merge.MIN_SHARED}"); return
+            yield ev({"t": "error", "message": f"these two share {sh or 0} operations; "
+                                               f"merging wants at least {_merge.MIN_SHARED}"}); return
         missing = [D["recs"][x]["name"] for x in (a, b) if not _merge.source(x)]
         if missing:
-            yield ev("error", message="no SKILL.md on file for " + " and ".join(missing)); return
-        yield ev("stage", step=1, message="reading both SKILL.md in full")
+            yield ev({"t": "error", "message": "no SKILL.md on file for " + " and ".join(missing)})
+            return
+        yield ev({"t": "start", "a": D["recs"][a]["name"], "b": D["recs"][b]["name"], "shared": sh})
         try:
-            out = _merge.run(D["recs"][a], D["recs"][b], a, b, model, effort)
+            # the generator reports each step as it finishes, which is the point: four of the
+            # five decide whether the skill should exist and whether it came out intact
+            for msg in _merge.run(D["nodes"][a], D["nodes"][b], a, b, model, effort):
+                yield ev(msg)
         except Exception as e:
-            yield ev("error", message=str(e)); return
-        yield ev("stage", step=2, message="checking every string it says it carried")
-        yield ev("done", result=out)
+            yield ev({"t": "error", "message": str(e)})
 
     # no @cached here, and no buffering in front of it: this route is the one that writes
     return app.response_class(stream(), mimetype="text/event-stream",
