@@ -690,8 +690,14 @@ catch(e){document.documentElement.setAttribute('data-theme','light');}})();
 <script>
 const API=p=>fetch(p).then(r=>r.json());
 const POST=(p,b)=>fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json());
-const REL={same:'--same',intersect:'--inter',contain:'--contain'};
-const RELE={same:'--esame',intersect:'--einter',contain:'--econtain'};   // edge-only, softer
+/* Three of these are verdicts a judge reached about two skills; `derived` is not. It records
+   that one document was written from two, which is known rather than assessed, and it is drawn
+   dashed for that reason — a solid line in this graph means someone judged it. Keeping them
+   apart also keeps the corpus statistics honest: a merge you made yourself should not raise
+   the measured density of the market. */
+const REL={same:'--same',intersect:'--inter',contain:'--contain',derived:'--accent'};
+const ASSERTED={derived:1};          // known by construction, not judged
+const RELE={same:'--esame',intersect:'--einter',contain:'--econtain',derived:'--accent'};   // edge-only, softer
 const cssv=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const fmt=n=>n>=1000?(n/1000).toFixed(n>=10000?0:1)+'k':(''+(n||0));
 const esc=s=>(''+(s==null?'':s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -979,6 +985,8 @@ function drawForce(host,nodes,edges,opts){opts=opts||{};const W=opts.W||900,H=op
     l.setAttribute('stroke-width','3.00');
     l.setAttribute('stroke-opacity',isNear?(simBase||0.2):edgeOpacity);
     l.setAttribute('stroke-linecap','round');
+    // asserted, not judged: dashed, so the eye can tell a fact from a verdict
+    if(ASSERTED[e.type])l.setAttribute('stroke-dasharray','7 5');
     if(isNear)l.setAttribute('stroke-opacity',(simBase||0.2).toFixed(2));
     if(dirOK)l.setAttribute('marker-end',`url(#ar-${uid})`);   // no arrow beats a wrong arrow
     l.setAttribute('vector-effect','non-scaling-stroke');l.setAttribute('class','sedge');eG.appendChild(l);
@@ -1374,7 +1382,7 @@ function renderFullInfo(s,opts){
   const sh=(s.shared||[]),shn=s.shared_n;
   // the count, without a pairing that was guessed after the fact — see app.py's /api/full
   const shared=(s.anchor_name&&typeof shn==='number'&&shn>0)
-    ? `<div class="imshn"><b>${shn}</b> operation${shn===1?'':'s'} also in `+
+    ? `<div class="imshn"><b>${shn}</b> similar operation${shn===1?'':'s'} in `+
       `<b>${esc(s.anchor_name)}</b></div>`
     : '';
   const grp=(label,body)=>body?`<div class="imsec"><div class="imk">${label}</div><div class="imv">${body}</div></div>`:'';
@@ -1556,14 +1564,11 @@ function mgConfirm(p){
 function mgPaint(body,foot){document.getElementById('mergemodal').innerHTML=mgShell(body,foot);}
 
 const MGSTAGES=[
-  ['compare','reading both documents, three times independently'],
-  ['decide','are these one skill, or two that overlap'],
-  ['obligations','what each side cannot afford to lose'],
-  ['reconcile','which requirements are the same one, and which collide'],
-  ['write','one document from two'],
-  ['check','did it keep what it had to keep']];
+  ['pull','reading both skills as they were written'],
+  ['plan','what the merged skill has to be: sections, steps, tools, what it must keep'],
+  ['write','one document, against that plan'],
+  ['check','does it meet the plan, and does it still look like them']];
 
-// what each step reported, filled in as the events arrive
 let MGST={};
 
 function mgRunning(){
@@ -1572,8 +1577,8 @@ function mgRunning(){
     const cls=st&&st.state==='done'?'ok':(st&&st.state==='running'?'on':'');
     return `<li class="${cls}"><span class="mgdot"></span><div>${esc(label)}`+
       (st&&st.what?`<span class="mgwhat">${st.what}</span>`:'')+`</div></li>`;}).join('');
-  mgPaint(`<div class="mgnote">Five steps. Only one of them writes the skill; the others `+
-    `decide whether it should exist and whether it came out whole.</div>`+
+  mgPaint(`<div class="mgnote">Four steps. Only one writes the skill; the plan before it `+
+    `decides what the skill has to be, and the check after it asks whether it is that.</div>`+
     `<ul class="mglog">${li}</ul><div class="mgclock" id="mgclock">0s</div>`,'');
   if(!MG.tick){MG.t0=Date.now();
     MG.tick=setInterval(()=>{const c=document.getElementById('mgclock');
@@ -1586,27 +1591,37 @@ function mgStage(e){
   const st=MGST[e.id]=MGST[e.id]||{};
   st.state=e.state;
   if(e.state!=='done'){mgRunning();return;}
-  if(e.id==='compare'){
-    const L=e.labels||{};
-    st.what=Object.entries(L).map(([k,v])=>pill(`${k} ${v}`,k==='conflict'?'warn':''))
-      .join('')+(e.dropped?pill(`${e.dropped} seen once, dropped`):'');
-  }else if(e.id==='decide'){
+  if(e.id==='pull'){
+    const f=x=>`${(x.chars/1000).toFixed(1)}KB · ${x.sections} sections · ${x.steps} steps`;
+    st.what=pill(f(e.a))+pill(f(e.b));
+  }else if(e.id==='plan'){
+    if(e.name)MGST._name=e;
     st.what=pill(e.relation,e.relation==='one_skill'?'good':'warn')+
-      pill(`${e.votes}/${e.k} agreed`)+(e.why?`<span class="mgwhat">${esc(e.why)}</span>`:'');
-  }else if(e.id==='obligations'){
-    st.what=pill(`A ${e.a}`)+pill(`B ${e.b}`);
-  }else if(e.id==='reconcile'){
-    st.what=Object.entries(e.actions||{}).map(([k,v])=>pill(`${k} ${v}`,k==='conflict'?'warn':''))
-      .join('')+pill(`${e.must} must not be lost`,'warn');
+      (e.relation==='one_skill'
+        ? pill(`${e.outline} sections planned`)+pill(`${e.workflow} steps`)+
+          (e.tool_choices?pill(`${e.tool_choices} tool choices kept`):'')+
+          (e.conflicts?pill(`${e.conflicts} disagreements to settle`,'warn'):'')+
+          pill(`${e.must_keep} must keep`)
+        : '')+
+      (e.name?pill(esc(e.name),'good'):'')+
+      (e.why?`<span class="mgwhat">${esc(e.why)}</span>`:'')+
+      (e.name_why?`<span class="mgwhat">名字：${esc(e.name_why)}</span>`:'');
   }else if(e.id==='write'){
+    // shape is reported beside the plan's target, because the failure this replaced kept the
+    // content and lost the organisation, and only a comparison shows that
+    const off=e.planned_sections&&Math.abs(e.sections-e.planned_sections)>2;
     st.what=pill(esc(e.name||''))+pill(`${(e.chars/1000).toFixed(1)}KB`)+
+      pill(`${e.sections}/${e.planned_sections} sections`,off?'warn':'good')+
+      pill(`${Math.round(e.vs_sources*100)}% of both sources`)+
       (e.decisions?pill(`${e.decisions} decisions stated`,'good'):'');
   }else if(e.id==='check'){
     const k=e.kept==null?'—':Math.round(e.kept*100)+'%';
+    const o=e.outline_followed||{}, t=e.tools_kept||{};
     st.what=pill(`kept ${k}`,e.kept>=0.9?'good':(e.kept>=0.7?'warn':'bad'))+
       (e.undecided?pill(`${Math.round(e.undecided*100)}% undecided`,'warn'):'')+
-      ((e.lost||[]).length?pill(`${e.lost.length} must-keep lost`,'bad'):'')+
-      pill(`${(e.agreement||{}).agreed||0} unanimous`);
+      (o.planned?pill(`${o.present}/${o.planned} sections present`,
+        o.present<o.planned?'warn':'good'):'')+
+      (t.planned?pill(`${t.kept}/${t.planned} tools kept`,t.kept<t.planned?'warn':'good'):'');
   }
   mgRunning();}
 
@@ -1633,6 +1648,14 @@ async function mgRun(){
       let ev;try{ev=JSON.parse(line);}catch(_){continue;}
       if(ev.t==='stage')mgStage(ev);
       else if(ev.t==='start')mgRunning();
+      else if(ev.t==='name'){
+        // a crowded name is worth saying out loud: this corpus has 79 skills called
+        // code-review, and a merge that joins them is harder to find than either parent
+        const st=MGST.plan; if(!st)return;
+        if(ev.same_as_parent||ev.used_by>0){
+          st.what=(st.what||'')+pill(ev.same_as_parent?'same name as a source'
+            :`${ev.used_by} other skill${ev.used_by>1?'s':''} already use this name`,'warn');
+          mgRunning();}}
       else if(ev.t==='not_one_skill')return mgNotOne(ev);
       else if(ev.t==='error')return mgError(ev.message,ev.why);
       else if(ev.t==='done')return mgResult(ev.result);}}
@@ -1724,6 +1747,11 @@ async function mgSave(){
     labels:{summary:r.summary||'',object:r.object||'',subject:r.subject||'',tech:r.tech||[]},
     md:r.skill_md||'',check:r._check||null,merged:true,
     merged_from:par.map(x=>({id:x.id,name:x.name})),
+    // both parents travel with the merged skill, as the relation they actually are: it was
+    // written from them, and by construction it does what each of them did
+    neighbours:par.map(x=>({id:x.id,name:x.name,summary:'',activity:x.activity,
+                            capability:x.capability||'',pop:0,sim:1,
+                            type:'derived',broader:'new'})),
     // no graph yet, and none invented. Where a merged skill sits among 14,460 others is a
     // question for the embedding, not something derivable from the two it came from, so the
     // card offers to place it and this stays empty until it has been.
@@ -1908,7 +1936,7 @@ function renderPlacement(r){const res=document.getElementById('a-res');const nm=
     `<div class="sugg"><div class="suggc"><div class="l">Best-fit activity</div><div class="v" style="color:${actCol(r.suggested_activity)}">${esc(r.suggested_activity)}</div></div>`+
     `<div class="suggc"><div class="l">Best-fit capability</div><div class="v">${esc(r.suggested_capability)}</div></div>`+
     `<div class="suggc"><div class="l">Typed relations</div><div class="v">${typed.length} / ${r.neighbours.length}</div></div></div>`+
-    `<div class="legend"><span><span class="dot" style="background:${cssv('--contain')}"></span>contain</span><span><span class="dot" style="background:${cssv('--same')}"></span>same</span><span><span class="dot" style="background:${cssv('--inter')}"></span>intersect</span><span style="color:var(--muted)">hollow = candidate</span></div>`+
+    `<div class="legend"><span><span class="dot" style="background:${cssv('--contain')}"></span>contain</span><span><span class="dot" style="background:${cssv('--same')}"></span>same</span><span><span class="dot" style="background:${cssv('--inter')}"></span>intersect</span><span><span class="dot" style="background:${cssv('--accent')};opacity:.6"></span>derived from (dashed)</span><span style="color:var(--muted)">hollow = candidate</span></div>`+
     `<div class="ngraph" style="border:1px solid var(--line);border-radius:13px;overflow:hidden;margin-bottom:14px;position:relative"><div id="pg"></div><div class="sphint" style="position:absolute">click a node = full info · click centre = full graph</div></div>`+
     `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px"><button class="btn" id="openfull" style="width:auto;margin:0;padding:9px 18px">◈ Open full graph →</button>`+
       `<span id="savedmsg" class="hint" style="align-self:center">saving to <b>My Skills</b>…</span></div>`+
@@ -1927,7 +1955,8 @@ function renderPlacement(r){const res=document.getElementById('a-res');const nm=
     const o=r._opts||{};
     const rec={name:nm,summary:(L&&L.summary)||'',steps:(L&&L.steps)||[],tech:(L&&L.tech)||[],
       activity:r.suggested_activity,capability:r.suggested_capability,labels:L,
-      neighbours:r.neighbours,neigh_edges:r.neigh_edges,ts:Date.now(),
+      neighbours:withParents(r.neighbours,o.merged_from),
+      neigh_edges:r.neigh_edges,ts:Date.now(),
       md:o.md||'',merged:!!o.row,merged_from:o.merged_from||null};
     if(o.row){const t=document.getElementById('savedmsg');
       const ok=await updateAdded(o.row,rec);
@@ -1945,6 +1974,19 @@ function renderPlacement(r){const res=document.getElementById('a-res');const nm=
     const t=document.getElementById('savedmsg');
     if(t)t.innerHTML='✓ Saved to <b>My Skills</b>';
   }catch(_){}})();}
+function withParents(found,parents){
+  /* Placing a merged skill searches the corpus for neighbours and replaces the list. The two
+     it was written from must survive that: they are not a search result that happened to rank
+     well, they are where the document came from, and a similarity pass is entitled to rank
+     them low. Re-labelled `derived` if the search found them under a judged type, because the
+     provenance is the stronger statement. */
+  const out=(found||[]).filter(n=>!(parents||[]).some(p=>p.id===n.id));
+  return (parents||[]).map(p=>{
+    const hit=(found||[]).find(n=>n.id===p.id)||{};
+    return {...hit,id:p.id,name:p.name,type:'derived',broader:'new',
+            sim:hit.sim!=null?hit.sim:1};
+  }).concat(out);}
+
 async function updateAdded(id,rec){
   // an older upstream has no update route. Adding the new row before removing the old one
   // means the worst case is a duplicate rather than a skill that is gone.

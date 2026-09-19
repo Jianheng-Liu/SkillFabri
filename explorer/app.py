@@ -701,7 +701,8 @@ def merge_run():
         try:
             # the generator reports each step as it finishes, which is the point: four of the
             # five decide whether the skill should exist and whether it came out intact
-            for msg in _merge.run(D["nodes"][a], D["nodes"][b], a, b, model, effort):
+            for msg in _merge.run(D["nodes"][a], D["nodes"][b], a, b, model, effort,
+                                  all_recs=D["nodes"]):
                 yield ev(msg)
         except Exception as e:
             yield ev({"t": "error", "message": str(e)})
