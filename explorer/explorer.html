@@ -497,8 +497,10 @@ h1{font-size:27px;letter-spacing:-.03em;margin:0 0 6px;font-weight:800;text-wrap
 .imsh .shx{font-family:var(--mono);font-size:10.5px;color:var(--inter);text-align:center}
 .imshn{font-size:11.5px;color:var(--muted);margin:0 0 7px}.imshn b{color:var(--ink2);font-weight:600}
 .imrel{font-family:var(--mono);font-size:10.5px;border:1px solid;border-radius:6px;padding:2px 7px}
-.imio{display:inline-flex;align-items:center;gap:5px;margin-right:12px}
-.imio b{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:400}
+.imio{display:flex;width:100%;align-items:baseline;gap:8px;flex-wrap:wrap}
+.imio b{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);font-weight:400;min-width:62px;flex:none}
+.imio .tag{margin:1px 0}
 .imfoot{display:flex;gap:12px;flex-wrap:wrap;align-items:center;border-top:1px solid var(--line);
   padding:16px 22px 20px;margin-top:6px}
 .imsrc{display:inline-flex;align-items:center;gap:7px;text-decoration:none;font-family:var(--sans);
@@ -532,7 +534,10 @@ h1{font-size:27px;letter-spacing:-.03em;margin:0 0 6px;font-weight:800;text-wrap
 /* each step reports what it found, not that it happened: the four steps around `write` are
    the ones that decide whether the skill should exist and whether it came out whole */
 .mglog li{display:grid;grid-template-columns:8px 1fr;gap:10px;align-items:start}
-.mgwhat{display:block;font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5}
+.mgnm{font-size:13px;font-weight:650;color:var(--ink);margin-right:8px}
+.mgnote2{font-size:12px;color:var(--muted)}
+.mglog li.ok .mgnm,.mglog li.on .mgnm{color:var(--ink)}
+.mgwhat{display:block;font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.5}
 .mglog li.on .mgwhat,.mglog li.ok .mgwhat{color:var(--ink2)}
 .mgpill{display:inline-block;font-family:var(--mono);font-size:10px;padding:1px 6px;
   border-radius:5px;border:1px solid var(--line);margin:3px 4px 0 0;color:var(--ink2)}
@@ -1469,8 +1474,7 @@ function mgShell(body,foot){
   return `<div class="imcard" style="max-width:700px">`+
     `<div class="imhead"><button class="x" onclick="closeMerge()">✕</button>`+
       `<h2>Merge two skills</h2>`+
-      `<div class="dsum" style="margin:9px 0 0">Five steps: read both, decide whether they are one `+
-      `skill, and only then write.</div>`+
+      `<div class="dsum" style="margin:9px 0 0">One SKILL.md from two, in four checked steps.</div>`+
     `</div><div class="imbody">${body}</div>`+
     (foot?`<div class="imfoot">${foot}</div>`:'')+`</div>`;}
 
@@ -1480,12 +1484,19 @@ function closeMerge(){const el=document.getElementById('mergemodal');el.classLis
 async function openMerge(a,b){
   MG={a:a,b:b,t0:0,tick:null};
   const el=document.getElementById('mergemodal');
-  el.innerHTML=mgShell('<div class="empty"><span class="spin"></span></div>');
+  // the checklist from the first frame, so there is never a bare spinner with nothing to read
+  el.innerHTML=mgShell(`<ul class="mglog">`+MGSTAGES.map(([id,name,note],k)=>
+    `<li class="${k===0?'on':''}"><span class="mgdot"></span><div>`+
+    `<b class="mgnm">${esc(name)}</b><span class="mgnote2">${esc(note)}</span></div></li>`
+    ).join('')+`</ul>`);
   el.classList.add('on');
-  let p;try{p=await API(`/api/merge/pair?a=${a}&b=${b}`);}catch(e){p={error:'could not reach the server'};}
-  if(p.error){el.innerHTML=mgShell(`<div class="mgfail">${esc(p.error)}</div>`,
-    `<button class="btn" onclick="closeMerge()">Close</button>`);return;}
-  mgConfirm(p);}
+  let p;
+  try{p=await API(`/api/merge/pair?a=${a}&b=${b}`);}
+  catch(e){p={error:'could not reach the server'};}
+  // a panel that throws leaves the spinner turning for ever, which is how a missing variable
+  // looked like a slow server for twenty minutes
+  try{mgConfirm(p);}catch(err){mgError('could not show this pair: '+err.message);}
+  return;}
 
 function mgWhyMissing(why){
   // the same shape as Add My Skill's page: name the missing piece and the command that gets it
@@ -1521,15 +1532,16 @@ python explorer/app.py --port 8000</pre>`+
 function mgConfirm(p){
   MG.info=p;
   const one=(x)=>`<div class="mgone"><span class="nm">${esc(x.name)}</span>`+
-    `<span class="mt">${esc(x.activity||'')} · ${x.steps} steps</span></div>`;
-  // No list here. The count is the judge's, recorded when the graph was built; which
-  // operations it meant was never written down, and the pairing shown here until now was
-  // reconstructed afterwards from shared words. It found three of five on a pair whose five
-  // steps correspond one to one, missing exactly the two worth seeing — "audit code for
-  // security vulnerabilities" and "identify security flaws and OWASP violations" share one
-  // word. A weaker second opinion presented beside a stronger number is worse than no list:
-  // the comparison that opens the merge reads both documents and answers this properly.
-  const ops = '';
+    `<span class="mt">${esc(x.activity||'')} · ${x.steps} steps · ${(x.chars/1000).toFixed(1)}KB</span></div>`;
+  // The pair, then the checklist of what will be done to it. No list of shared operations: the
+  // judge recorded how many and never which, and the pairing this used to reconstruct from
+  // shared words contradicted the count printed above it.
+  let body=`<div class="mgpair">${one(p.a)}<div class="mgplus">＋</div>${one(p.b)}</div>`+
+    `<div class="imsec"><div class="imk">Shared</div>`+
+      `<div class="imv" style="display:block"><div class="mgnote">`+
+      `<b>${p.shared} similar operation${p.shared===1?'':'s'}</b>, counted when the graph was `+
+      `built. Which ones comes out of Read.</div></div></div>`;
+
   if(!p.eligible&&p.ready){
     // two different reasons, and the wrong one reads as a bug: a pair can clear the count and
     // still have no document to read
@@ -1550,13 +1562,12 @@ function mgConfirm(p){
       ((ME&&ME.upstream)?mgWhyMissing(p.why):mgLocalOnly())+`</div></div>`;
     return mgPaint(body,`<button class="btn" onclick="closeMerge()">Close</button>`);}
 
-  body+=`<div class="imsec"><div class="imk">What happens</div><div class="imv" style="display:block">`+
-    `<div class="mgnote">First it reads both documents and decides whether these are one skill `+
-    `at all. Most pairs are not: they share real work without belonging in one file, and the `+
-    `answer is then which piece is worth pulling out on its own.<br><br>`+
-    `If they are one skill, it works out what neither side can afford to lose, writes the `+
-    `merged document from both in full, and checks the result against that list.<br><br>`+
-    `A few minutes, on your own API key.</div></div></div>`;
+  // the same checklist the run will tick through, shown before it starts so the wait has a
+  // shape: four rows, each saying what it will do and later what it found
+  body+=`<div class="imsec"><div class="imk">Steps</div><div class="imv" style="display:block">`+
+    `<ul class="mglog">`+MGSTAGES.map(([id,name,note])=>
+      `<li><span class="mgdot"></span><div><b class="mgnm">${esc(name)}</b>`+
+      `<span class="mgnote2">${esc(note)}</span></div></li>`).join('')+`</ul></div></div>`;
   mgPaint(body,
     `<button class="imsrc" onclick="closeMerge()">Cancel</button>`+
     `<button class="btn" onclick="mgRun()">Merge →</button>`);}
@@ -1564,22 +1575,21 @@ function mgConfirm(p){
 function mgPaint(body,foot){document.getElementById('mergemodal').innerHTML=mgShell(body,foot);}
 
 const MGSTAGES=[
-  ['pull','reading both skills as they were written'],
-  ['plan','what the merged skill has to be: sections, steps, tools, what it must keep'],
-  ['write','one document, against that plan'],
-  ['check','does it meet the plan, and does it still look like them']];
+  ['pull',  'Read',  'both documents, as their authors wrote them'],
+  ['plan',  'Plan',  'sections, steps, tools, what cannot be lost'],
+  ['write', 'Write', 'one document, against that plan'],
+  ['check', 'Check', 'does it meet the plan, and still read like them']];
 
 let MGST={};
 
 function mgRunning(){
-  const li=MGSTAGES.map(([id,label])=>{
+  const li=MGSTAGES.map(([id,name,note])=>{
     const st=MGST[id];
     const cls=st&&st.state==='done'?'ok':(st&&st.state==='running'?'on':'');
-    return `<li class="${cls}"><span class="mgdot"></span><div>${esc(label)}`+
+    return `<li class="${cls}"><span class="mgdot"></span><div>`+
+      `<b class="mgnm">${esc(name)}</b><span class="mgnote2">${esc(note)}</span>`+
       (st&&st.what?`<span class="mgwhat">${st.what}</span>`:'')+`</div></li>`;}).join('');
-  mgPaint(`<div class="mgnote">Four steps. Only one writes the skill; the plan before it `+
-    `decides what the skill has to be, and the check after it asks whether it is that.</div>`+
-    `<ul class="mglog">${li}</ul><div class="mgclock" id="mgclock">0s</div>`,'');
+  mgPaint(`<ul class="mglog">${li}</ul><div class="mgclock" id="mgclock">0s</div>`,'');
   if(!MG.tick){MG.t0=Date.now();
     MG.tick=setInterval(()=>{const c=document.getElementById('mgclock');
       if(!c){clearInterval(MG.tick);MG.tick=null;return;}
@@ -1596,13 +1606,12 @@ function mgStage(e){
     st.what=pill(f(e.a))+pill(f(e.b));
   }else if(e.id==='plan'){
     if(e.name)MGST._name=e;
-    st.what=pill(e.relation,e.relation==='one_skill'?'good':'warn')+
-      (e.relation==='one_skill'
+    st.what=(e.relation==='merge'
         ? pill(`${e.outline} sections planned`)+pill(`${e.workflow} steps`)+
           (e.tool_choices?pill(`${e.tool_choices} tool choices kept`):'')+
-          (e.conflicts?pill(`${e.conflicts} disagreements to settle`,'warn'):'')+
+          (e.conflicts?pill(`${e.conflicts} disagreements settled`,'good'):'')+
           pill(`${e.must_keep} must keep`)
-        : '')+
+        : pill('blocked','bad')+pill(`${e.blockers} collision${e.blockers===1?'':'s'}`,'bad'))+
       (e.name?pill(esc(e.name),'good'):'')+
       (e.why?`<span class="mgwhat">${esc(e.why)}</span>`:'')+
       (e.name_why?`<span class="mgwhat">名字：${esc(e.name_why)}</span>`:'');
@@ -1656,20 +1665,25 @@ async function mgRun(){
           st.what=(st.what||'')+pill(ev.same_as_parent?'same name as a source'
             :`${ev.used_by} other skill${ev.used_by>1?'s':''} already use this name`,'warn');
           mgRunning();}}
-      else if(ev.t==='not_one_skill')return mgNotOne(ev);
+      else if(ev.t==='blocked')return mgBlocked(ev);
       else if(ev.t==='error')return mgError(ev.message,ev.why);
       else if(ev.t==='done')return mgResult(ev.result);}}
   mgError('the connection closed before the merge finished');}
 
-function mgNotOne(e){
+function mgBlocked(e){
   if(MG.tick){clearInterval(MG.tick);MG.tick=null;}
-  const t=e.relation==='shared_core'
-    ? 'These two share real work without being one skill.'
-    : 'What these two share is what almost any skill does.';
-  mgPaint(`<div class="mgnote" style="margin-bottom:12px"><b>${esc(t)}</b><br>${esc(e.why||'')}</div>`+
-    (e.extract?`<div class="mgextract"><b>worth extracting instead</b>${esc(e.extract)}</div>`:'')+
-    `<div class="mgnote" style="margin-top:12px">Merging them would produce a document that `+
-    `serves neither reader as well as the two you have.</div>`,
+  // a refusal that cannot be checked is a refusal nobody can argue with. Each blocker shows
+  // the sentence from each side and why no condition holds both.
+  const bs=(e.blockers||[]).map(b=>
+    `<div class="mgcf"><span class="ax">cannot both hold</span>`+
+    `<div class="sd">A · ${esc(String(b.a_says||'').slice(0,240))}</div>`+
+    `<div class="sd">B · ${esc(String(b.b_says||'').slice(0,240))}</div>`+
+    (b.why_no_condition?`<div class="cond">${esc(b.why_no_condition)}</div>`:'')+`</div>`).join('');
+  mgPaint(
+    `<div class="mgnote" style="margin-bottom:10px"><b>These two cannot become one document.</b>`+
+    `<br>${esc(e.why||'')}</div>`+
+    (bs||`<div class="mgnote">No specific collision was named, which is itself a reason to look `+
+     `again rather than to trust the refusal.</div>`),
     `<button class="btn" onclick="closeMerge()">Close</button>`);}
 
 function mgError(msg,why){

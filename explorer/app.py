@@ -206,7 +206,12 @@ def load(graph_file="relations.json"):
         stepidx = [[vix[norm(x)] for x in (nd.get("steps") or [])[:10] if norm(x) in vix] for nd in nodes]
         print(f"[explorer] step embeddings loaded ({Xst.shape[0]} steps)")
     except Exception as ex:
-        print(f"[explorer] step embeddings unavailable ({ex}); step-highlight off")
+                # Nothing reads these any more. shared_ops() was their only consumer and it has no
+        # callers: the pairing it reconstructed contradicted the count printed above it, so
+        # the card and the merge panel stopped showing one. Kept because the file is still
+        # what a step-level feature would need, and said quietly because its absence is not
+        # a gap to go and fill.
+        print(f"[explorer] step embeddings not loaded ({type(e).__name__}); nothing uses them")
     # extra browse dimensions the other marketplaces have and we can support
     for i, nd in enumerate(nodes):
         for t in (nd.get("tools") or [])[:10]: groups["tool"][t].append(i)
