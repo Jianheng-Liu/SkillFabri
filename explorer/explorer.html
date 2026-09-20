@@ -528,10 +528,11 @@ h1{font-size:27px;letter-spacing:-.03em;margin:0 0 6px;font-weight:800;text-wrap
 .mgplus{display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--muted)}
 .mgnote{font-size:12.5px;line-height:1.6;color:var(--ink2)}
 .mgnote b{color:var(--ink)}
-/* mergeable pairs, listed beside the graph they are drawn in */
-.mgcount{float:right;font-family:var(--mono);font-size:10px;letter-spacing:0;
-  text-transform:none;color:var(--muted)}
-.mgrows{display:flex;flex-direction:column;gap:1px;margin:2px 0 16px}
+/* mergeable pairs, listed under the relations in the same panel */
+/* it is the only child of #spmerge, so :first-child would give it the 6px a top section gets,
+   and it is not one — it follows Intersects and needs the gap between sections */
+#spmerge>.relsec{margin-top:18px}
+.mgrows{display:flex;flex-direction:column;gap:1px;margin:2px 0 4px}
 .mgrow{padding:9px 10px;border-radius:9px;border:1px solid transparent;cursor:default}
 .mgrow:hover{background:var(--panel2);border-color:var(--line)}
 .mgrow.off{opacity:.55}
@@ -908,7 +909,9 @@ function applyHash(){
   if(h==='compose'||h.startsWith('compose=')){
     show('compose');
     const pair=h.startsWith('compose=')?h.slice(8).split(',').map(Number).filter(n=>n>=0):null;
-    const go=()=>{if(pair&&pair.length===2){cmPick(0,pair[0]);cmPick(1,pair[1]);}};
+    // sequential: each pick now re-renders the other slot, and two of them racing would have
+    // one redraw over the other's result
+    const go=async()=>{if(pair&&pair.length===2){await cmPick(0,pair[0]);await cmPick(1,pair[1]);}};
     if(!R.compose){renderCompose().then(()=>{R.compose=1;go();});}else go();
     return true;}
   if(h.startsWith('browse=')){const v=h.slice(7);show('browse');
@@ -1279,7 +1282,7 @@ function renderSkillPage(s){const el=document.getElementById('skillpage');const 
         s.steps.map((x,ix)=>`<span class="wstep" data-si="${ix}">${esc(x)}</span>`).join('')+`</div>`:'')+
       ((s.tech||[]).length?`<div class="eyebrow">Tech</div><div class="kv">`+
         s.tech.map(t=>`<span class="tag">${esc(t)}</span>`).join('')+`</div>`:'')+
-      `<div id="spmerge"></div><div id="sprel"></div></div></div>`;
+      `<div id="sprel"></div><div id="spmerge"></div></div></div>`;
   document.getElementById('spfav').onclick=async()=>{const r=await POST('/api/fav',{id:s.id});
     if(!r||r.error){askSignIn('Sign in to save this skill.');return;}
     if(r.on)FAVS.add(s.id);else FAVS.delete(s.id);const b=document.getElementById('spfav');
@@ -1363,17 +1366,29 @@ function paintMergePanel(){
   const pairs=MGP.pairs||[],nm=MGP.nm||{};
   const shown=MGP.all?pairs:pairs.slice(0,MGSHOW),rest=pairs.length-shown.length;
   const off=!(CAPS&&CAPS.merge);
-  // nearly every neighbour clears a bar of two, so the count ranks rather than admits — the
-  // strongest pairs first is the whole value of the list
-  host.innerHTML=`<div class="eyebrow">Mergeable here<span class="mgcount">${pairs.length} `+
-    `pair${pairs.length>1?'s':''}</span></div><div class="mgrows" id="mgrows">`+
-    shown.map((e,i)=>mgRow(e,nm,i,MGP.have,off)).join('')+`</div>`+
-    (rest>0?`<button class="cmclear" id="mgmore" style="margin:0 0 16px">+${rest} more</button>`
-           :(MGP.all&&pairs.length>MGSHOW
-             ?`<button class="cmclear" id="mgless" style="margin:0 0 16px">Show fewer</button>`:''))+
-    (off?`<div class="mgoff">Merging is not set up on this instance. It needs the SKILL.md `+
-         `bundle and an API key, which the hosted copy does not carry. Run it locally to `+
-         `compose from these.</div>`:'');
+  // Same section as Same, Contains and Intersects, because it reads as one of them and folds
+  // like one of them. Accent rather than a relation colour: those three are what the judge
+  // found, this is what you could make, and the edge a merge leaves behind is `derived`.
+  const col=cssv('--accent');
+  // nearly every neighbour clears a bar of two, so the count ranks rather than admits, and
+  // the strongest pairs first is the whole value of the list
+  host.innerHTML=`<div class="relsec" data-t="merge"><div class="relhead" role="button" tabindex="0">`+
+    `<span class="dot" style="background:${col}"></span>Mergeable`+
+    `<b class="relcount">${pairs.length}</b><span class="relcar">▾</span></div>`+
+    `<div class="relrows"><div class="mgrows" id="mgrows">`+
+      shown.map((e,i)=>mgRow(e,nm,i,MGP.have,off)).join('')+`</div>`+
+      (rest>0?`<button class="cmclear" id="mgmore" style="margin:0 0 4px">+${rest} more</button>`
+             :(MGP.all&&pairs.length>MGSHOW
+               ?`<button class="cmclear" id="mgless" style="margin:0 0 4px">Show fewer</button>`:''))+
+      (off?`<div class="mgoff">Merging is not set up on this instance. It needs the SKILL.md `+
+           `bundle and an API key, which the hosted copy does not carry. Run it locally to `+
+           `compose from these.</div>`:'')+
+    `</div></div>`;
+  const sec=host.querySelector('.relsec'),h=host.querySelector('.relhead');
+  if(SPFOLD.merge)sec.classList.add('fold');
+  const flip=()=>{SPFOLD.merge=sec.classList.toggle('fold');};
+  h.onclick=flip;
+  h.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();flip();}};
   wireMergeRows(shown,nm);
   const more=document.getElementById('mgmore'),less=document.getElementById('mgless');
   if(more)more.onclick=()=>{MGP.all=true;paintMergePanel();};
@@ -1406,7 +1421,7 @@ function wireMergeRows(pairs,nm){
   document.querySelectorAll('#mgrows .mggo').forEach(btn=>{
     const e=pairs[+btn.dataset.i];if(!e)return;
     btn.onclick=ev=>{ev.stopPropagation();openMerge(e.a,e.b);};});}
-const SPFOLD={same:false,contain:false,intersect:false};
+const SPFOLD={same:false,contain:false,intersect:false,merge:false};
 // The panel is a fixed 400px, which is wrong in both directions: too narrow to read long skill
 // names, too wide when you want the graph. Make the split a user setting, and remember it.
 const SPW={min:280,max:760,def:400};
@@ -2076,7 +2091,7 @@ let CAPS=null;
    the work is — once the first is chosen it lists that skill's mergeable neighbours, ranked by
    shared operations, so the ordinary path is two clicks and cannot assemble a pair that the
    gate will turn away. Free search stays underneath for the case where you already know both. */
-const CM={a:null,b:null,q:['',''],act:['',''],sort:['pop','pop'],sug:null,dims:null};
+const CM={a:null,b:null,q:['',''],act:['',''],sort:['pop','pop'],sug:[null,null],dims:null};
 
 const CM_SORTS=[['pop','popularity'],['shared','most connected'],['dups','most duplicated'],
                 ['updated','recently updated'],['name','name']];
@@ -2162,8 +2177,10 @@ function cmSlot(k){
       `<div class="mt">${esc(rec.activity||'')}${rec.capability?' · '+esc(rec.capability):''}</div>`+
       `<button class="cmclear" data-k="${k}">Change</button></div>`;
     host.querySelector('.cmclear').onclick=()=>{
-      if(k)CM.b=null;else{CM.a=null;CM.sug=null;}
-      cmSlot(k);if(!k)cmSlot(1);cmVerdict();};
+      if(k)CM.b=null;else CM.a=null;
+      // the other slot was listing THIS skill's neighbours; it no longer has a skill to list
+      CM.sug=[null,null];
+      cmSlot(k);cmSlot(1-k);cmVerdict();};
     return;}
   host.className='cmslot';
   host.innerHTML=`<input class="cmq" id="cmq${k}" placeholder="Search a skill" `+
@@ -2188,22 +2205,24 @@ function cmSlot(k){
 async function cmSearch(k){
   const list=document.getElementById('cml'+k);if(!list)return;
   const q=(CM.q[k]||'').trim(), act=CM.act[k]||'';
-  // An untouched second slot is the suggestion case: the first skill's own neighbours, the
-  // only list here every row of which is known to clear the gate.
-  if(!q&&!act&&k===1&&CM.a){
-    if(!CM.sug){
-      try{const s=await API('/api/skill?id='+CM.a.id);
-        CM.sug=(s.relations||[]).filter(r=>typeof r.shared==='number'&&r.shared>=CM.min)
-          .sort((x,y)=>y.shared-x.shared).slice(0,40);}catch(_){CM.sug=[];}}
-    if(CM.sug.length){
-      list.innerHTML=`<div class="cmhead">Related to ${esc(clip(CM.a.name,20))}`+
-        `<span class="cmn">${CM.sug.length}</span></div>`+
-        CM.sug.map(r=>`<button class="cmopt" data-id="${r.id}"><b>${esc(r.name)}</b>`+
+  // An untouched slot opposite a filled one is the suggestion case: that skill's own
+  // neighbours, the only list here every row of which is known to clear the gate. It does not
+  // matter which side was chosen first; whichever slot is still empty gets the list.
+  const from=k?CM.a:CM.b;
+  if(!q&&!act&&from){
+    if(!CM.sug[k]){
+      try{const s=await API('/api/skill?id='+from.id);
+        CM.sug[k]=(s.relations||[]).filter(r=>typeof r.shared==='number'&&r.shared>=CM.min)
+          .sort((x,y)=>y.shared-x.shared).slice(0,40);}catch(_){CM.sug[k]=[];}}
+    if(CM.sug[k].length){
+      list.innerHTML=`<div class="cmhead">Related to ${esc(clip(from.name,20))}`+
+        `<span class="cmn">${CM.sug[k].length}</span></div>`+
+        CM.sug[k].map(r=>`<button class="cmopt" data-id="${r.id}"><b>${esc(r.name)}</b>`+
           `<span><i class="sh">${r.shared} shared</i> · ${esc(r.activity||'')}</span></button>`).join('');
       cmWire(k,list);return;}
     list.innerHTML=`<div class="cmhead">Nothing mergeable with this one</div>`+
       `<div class="cmnote">No skill shares ${CM.min} counted operations with `+
-      `${esc(clip(CM.a.name,24))}. Search or filter for one anyway; Reconcile reads both `+
+      `${esc(clip(from.name,24))}. Search or filter for one anyway; Reconcile reads both `+
       `documents and decides.</div>`;
     return;}
   list.innerHTML=`<div class="cmhead">Loading</div>`;
@@ -2230,9 +2249,11 @@ function cmWire(k,list){
 async function cmPick(k,id){
   let rec=null;
   try{rec=await API('/api/skill?id='+id);}catch(_){return;}
-  if(k){CM.b={id,name:rec.name,activity:rec.activity,capability:rec.capability};}
-  else{CM.a={id,name:rec.name,activity:rec.activity,capability:rec.capability};CM.sug=null;}
-  CM.q[k]='';CM.act[k]='';cmSlot(k);if(!k)cmSlot(1);cmVerdict();}
+  const pick={id,name:rec.name,activity:rec.activity,capability:rec.capability};
+  if(k)CM.b=pick;else CM.a=pick;
+  // the opposite slot's suggestions were drawn from whatever used to be here
+  CM.sug=[null,null];
+  CM.q[k]='';CM.act[k]='';cmSlot(k);cmSlot(1-k);cmVerdict();}
 
 async function cmVerdict(){
   const v=document.getElementById('cmv');if(!v)return;
