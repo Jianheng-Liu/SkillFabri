@@ -61,6 +61,11 @@ def cached(fn):
             return app.response_class(hit, mimetype="application/json")
         _CACHE_HITS[1] += 1
         resp = fn(*a, **kw)
+        # A view may return (body, status) — the sign-in and not-found paths do — and a tuple
+        # has no mimetype. Reading one turns every such response into a 500, so /api/skill for
+        # a bad id answered AttributeError rather than the 404 it meant.
+        if isinstance(resp, tuple):
+            return resp
         # only store plain successful JSON; an error should not be pinned for the process's life
         if getattr(resp, "status_code", 200) == 200 and resp.mimetype == "application/json":
             body = resp.get_data()
