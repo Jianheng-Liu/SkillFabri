@@ -189,7 +189,8 @@ When it merges — which is the normal case — specify the document:
                 needs it.
 
 WRITE EVERY FIELD BELOW IN ENGLISH, whatever language the sources are in. These strings are
-read on a page, not by the skill. Two things keep their original form: a sentence quoted from
+read on a page, not by the skill. Use no em dashes in them: a full stop, a colon or a comma
+carries the same break and reads as someone wrote it. Two things keep their original form: a sentence quoted from
 a source in `a_says`/`b_says`, which is evidence and must stay verbatim, and any literal the
 skill emits or matches on.
 
@@ -278,7 +279,8 @@ Report on the shape too, since a document can satisfy every requirement and stil
 like the thing it replaced: which planned sections are present, and which planned tool
 invocations appear nowhere.
 
-Write `reason` and `rules_out` in English, whatever language the document is in. `evidence`
+Write `reason` and `rules_out` in English, with no em dashes, whatever language the
+document is in. `evidence`
 is a quotation and stays exactly as the document has it.
 
 Return JSON only:

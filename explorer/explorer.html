@@ -551,7 +551,15 @@ h1{font-size:27px;letter-spacing:-.03em;margin:0 0 6px;font-weight:800;text-wrap
 .cmq{width:100%;border:0;border-bottom:1px solid var(--line);background:transparent;
   color:var(--ink);font:inherit;font-size:13px;padding:13px 15px;outline:none}
 .cmq::placeholder{color:var(--muted)}
-.cmlist{max-height:300px;overflow:auto}
+.cmfacets{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);
+  border-bottom:1px solid var(--line)}
+.cmsel{border:0;background:var(--panel);color:var(--ink2);font:inherit;font-size:11.5px;
+  padding:9px 11px;outline:none;cursor:pointer;min-width:0;
+  -webkit-appearance:none;appearance:none;text-overflow:ellipsis}
+.cmsel:hover{color:var(--ink)}
+.cmlist{max-height:340px;overflow:auto}
+.cmn{float:right;font-size:10px;color:var(--muted);letter-spacing:0;text-transform:none}
+.cmnote{padding:11px 15px;font-size:11.5px;line-height:1.55;color:var(--muted)}
 .cmopt{display:block;width:100%;text-align:left;border:0;background:transparent;cursor:pointer;
   padding:9px 15px;font:inherit;color:var(--ink);border-bottom:1px solid var(--line)}
 .cmopt:last-child{border-bottom:0}
@@ -810,7 +818,7 @@ function mountGoogle(){
     // and reports it only to the console — so an unconfigured origin looks like a blank gap.
     // Say what happened instead of leaving the space empty.
     setTimeout(()=>{if(host && !host.firstChild)
-      host.innerHTML='<span class="hint" style="line-height:1.5">Google sign-in did not load — '+
+      host.innerHTML='<span class="hint" style="line-height:1.5">Google sign-in did not load. '+
         'this page\'s origin may not be registered for the client id.</span>';},2500);};
   if(_gsi){draw();return;}
   _gsi=document.createElement('script');_gsi.src='https://accounts.google.com/gsi/client';
@@ -1358,7 +1366,7 @@ function paintMergePanel(){
     (rest>0?`<button class="cmclear" id="mgmore" style="margin:0 0 16px">+${rest} more</button>`
            :(MGP.all&&pairs.length>MGSHOW
              ?`<button class="cmclear" id="mgless" style="margin:0 0 16px">Show fewer</button>`:''))+
-    (off?`<div class="mgoff">Merging is not set up on this instance — it needs the SKILL.md `+
+    (off?`<div class="mgoff">Merging is not set up on this instance. It needs the SKILL.md `+
          `bundle and an API key, which the hosted copy does not carry. Run it locally to `+
          `compose from these.</div>`:'');
   wireMergeRows(shown,nm);
@@ -1429,11 +1437,13 @@ function renderAddLocalOnly(el){
       `belongs on a public site where every visit would spend someone else's money.</p>`+
       `<p>Browsing, search and the relation graphs work here without them.</p>`+
       `<div class="eyebrow">Run it yourself</div>`+
-      `<pre class="localcmd">conda create -n skillfabri python=3.11 -y
+      `<pre class="localcmd">git clone https://github.com/Jianheng-Liu/SkillFabri.git
+cd SkillFabri
+conda create -n skillfabri python=3.11 -y
 conda activate skillfabri
 pip install -r requirements.txt
 
-<span class="cmt"># the vectors that find a new skill's neighbours</span>
+<span class="cmt"># the vectors that find a new skill's neighbours (226 MB)</span>
 python tools/fetch_data.py --only skill_embeddings.npy
 export OPENROUTER_API_KEY=...
 
@@ -1449,6 +1459,8 @@ function renderAddNeeds(el){
   if(!why.embeddings)need.push(['The skill embeddings are missing.',
     'One vector per skill, 226 MB, which is how a new skill finds its neighbours.',
     'python tools/fetch_data.py --only skill_embeddings.npy']);
+  // a file the right size and the wrong contents used to pass unnoticed, so the fetcher now
+  // checks the Hub's sha256 and this line is worth saying out loud
   if(!why.api_key)need.push(['No API key is set.',
     'Reading and labelling a SKILL.md calls a model.',
     'export OPENROUTER_API_KEY=...']);
@@ -1884,7 +1896,7 @@ function mgResult(r){
     `<div class="mgchk">${badge}${warn.length?`<span class="mgwarn">${esc(warn.join(' · '))}</span>`:''}</div>`+
     conflicts+(decided?`<div class="mgnote" style="margin:12px 0 4px"><b>how the merge `+
       `resolved them</b></div>${decided}`:'')+
-    `<div class="mgnote" style="margin:0 0 11px"><b>${esc(r.name||'merged-skill')}</b> — ${esc(r.summary||'')}</div>`+
+    `<div class="mgnote" style="margin:0 0 11px"><b>${esc(r.name||'merged-skill')}</b> · ${esc(r.summary||'')}</div>`+
     `<pre class="mgmd">${esc(r.skill_md||'')}</pre>${drop}`,
     `<button class="imsrc" onclick="mgDownload()">↓ SKILL.md</button>`+
     `<button class="imsrc" onclick="mgCopy(this)">Copy</button>`+
@@ -2059,25 +2071,83 @@ let CAPS=null;
    the work is — once the first is chosen it lists that skill's mergeable neighbours, ranked by
    shared operations, so the ordinary path is two clicks and cannot assemble a pair that the
    gate will turn away. Free search stays underneath for the case where you already know both. */
-const CM={a:null,b:null,q:['',''],opts:[[],[]],sug:null};
+const CM={a:null,b:null,q:['',''],act:['',''],sort:['pop','pop'],sug:null,dims:null};
+
+const CM_SORTS=[['pop','popularity'],['shared','most connected'],['dups','most duplicated'],
+                ['updated','recently updated'],['name','name']];
 
 async function renderCompose(){
   const el=document.getElementById('v-compose');
-  try{CAPS=await API('/api/caps');}catch(_){}
-  let can={ready:false,min_shared:2};
-  try{can=await API('/api/merge/can');}catch(_){}
-  CM.min=can.min_shared||2;CM.ready=can.ready;
+  try{CAPS=await API('/api/caps');}catch(_){CAPS={merge:false,merge_why:{}};}
+  // Off on the public site by choice, off locally because something is missing. Those are
+  // different problems with different answers, and the page that offers two search boxes over
+  // documents it does not have is neither of them.
+  if(!CAPS.merge)return (ME&&ME.upstream)?renderComposeNeeds(el):renderComposeLocalOnly(el);
+  CM.min=CAPS.min_shared||2;
+  if(!CM.dims){try{CM.dims=(await API('/api/dims')).activity||[];}catch(_){CM.dims=[];}}
   el.innerHTML=`<h1>Compose a skill from two</h1>`+
     `<p class="lede">Two skills that share concrete operations are, often enough, one skill `+
-    `written twice. Pick both and one <b>SKILL.md</b> is written from them — the workflow of `+
+    `written twice. Pick both and one <b>SKILL.md</b> is written from them: the workflow of `+
     `each, the disagreements settled, nothing dropped silently.</p>`+
-    (can.ready?'':`<p class="lede cmwarn">Merging is not set up on this instance`+
-      `${can.why&&can.why.api_key===false?' — no API key':''}.</p>`)+
     `<div class="cmwrap"><div id="cm0"></div><div class="cmplus">+</div><div id="cm1"></div></div>`+
     `<div class="cmverdict" id="cmv"></div>`;
   cmSlot(0);cmSlot(1);cmVerdict();
   return true;}
 
+function cmLocalCmd(what,cmd){
+  return `<pre class="localcmd">git clone https://github.com/Jianheng-Liu/SkillFabri.git
+cd SkillFabri
+conda create -n skillfabri python=3.11 -y
+conda activate skillfabri
+pip install -r requirements.txt
+
+<span class="cmt"># ${esc(what)}</span>
+${esc(cmd)}
+export CRS_OAI_KEY=...          <span class="cmt"># or OPENROUTER_API_KEY</span>
+
+python explorer/app.py --port 8000</pre>`;}
+
+function renderComposeLocalOnly(el){
+  el.innerHTML=`<h1>Compose a skill from two</h1>`+
+    `<p class="lede">This one runs on your machine, not here.</p>`+
+    `<div class="localonly">`+
+      `<p>A merge reads both skills' <b>SKILL.md</b> in full, works out the single skill that `+
+      `does both jobs, writes it, and checks what it wrote. That needs every document in the `+
+      `corpus and an API key. Neither belongs on a public site, where one visitor could spend `+
+      `an afternoon of someone else's money.</p>`+
+      `<p>Browsing, search and the relation graphs work here without them. The graph already `+
+      `says which pairs are worth merging; running it yourself is what turns one into a file.</p>`+
+      `<div class="eyebrow">Run it yourself</div>`+
+      cmLocalCmd("every skill's SKILL.md, which a merge reads two of (38 MB)",
+                 "python tools/fetch_data.py --only skillmd.zip")+
+      `<div class="lofoot">`+
+        `<a class="btn" href="https://github.com/Jianheng-Liu/SkillFabri" target="_blank" rel="noopener">↗ Repository and setup</a>`+
+        `<button class="lobrowse" onclick="show('graph')">Find a pair in the graph →</button>`+
+      `</div>`+
+    `</div>`;}
+
+function renderComposeNeeds(el){
+  const why=(CAPS&&CAPS.merge_why)||{};
+  const need=[];
+  if(!why.docs)need.push(['The SKILL.md bundle is missing.',
+    "Every skill's own document, 38 MB, and a merge reads two of them in full.",
+    'python tools/fetch_data.py --only skillmd.zip']);
+  if(!why.api_key)need.push(['No API key is set.',
+    'Planning, writing and checking a merged skill each call a model.',
+    'export CRS_OAI_KEY=...        # or OPENROUTER_API_KEY']);
+  el.innerHTML=`<h1>Compose a skill from two</h1>`+
+    `<p class="lede">${need.length>1?'Two more things':'One more thing'} and this works.</p>`+
+    `<div class="localonly" style="max-width:660px">`+
+      need.map(([t,d,c])=>`<p><b>${t}</b> ${d}</p><pre class="localcmd">${esc(c)}</pre>`).join('')+
+      `<p style="margin-top:14px">Restart the server afterwards. Browsing, search and the `+
+      `relation graphs work without either of these.</p>`+
+      `<div class="lofoot"><button class="lobrowse" onclick="show('graph')">`+
+      `Find a pair in the graph →</button></div>`+
+    `</div>`;}
+
+/* One slot. A name is a poor way to find a skill in this corpus: 79 of them are called
+   code-review. So the slot carries what Browse carries, scoped to fit beside another one:
+   a query, the activity it belongs to, and the order to put them in. */
 function cmSlot(k){
   const host=document.getElementById('cm'+k);if(!host)return;
   const rec=k?CM.b:CM.a;
@@ -2091,40 +2161,61 @@ function cmSlot(k){
       cmSlot(k);if(!k)cmSlot(1);cmVerdict();};
     return;}
   host.className='cmslot';
-  host.innerHTML=`<input class="cmq" id="cmq${k}" placeholder="Search a skill…" `+
-    `value="${esc(CM.q[k])}" autocomplete="off"><div class="cmlist" id="cml${k}"></div>`;
+  host.innerHTML=`<input class="cmq" id="cmq${k}" placeholder="Search a skill" `+
+      `value="${esc(CM.q[k])}" autocomplete="off">`+
+    `<div class="cmfacets">`+
+      `<select class="cmsel" id="cma${k}"><option value="">every activity</option>`+
+        (CM.dims||[]).map(d=>`<option value="${esc(d.val)}"`+
+          (CM.act[k]===d.val?' selected':'')+`>${esc(d.val)} (${d.count})</option>`).join('')+
+      `</select>`+
+      `<select class="cmsel" id="cms${k}">`+
+        CM_SORTS.map(([v,l])=>`<option value="${v}"`+
+          (CM.sort[k]===v?' selected':'')+`>${esc(l)}</option>`).join('')+
+      `</select>`+
+    `</div><div class="cmlist" id="cml${k}"></div>`;
   const inp=host.querySelector('.cmq');
   inp.oninput=()=>{CM.q[k]=inp.value;clearTimeout(CM['_t'+k]);
     CM['_t'+k]=setTimeout(()=>cmSearch(k),180);};
+  host.querySelector('#cma'+k).onchange=e=>{CM.act[k]=e.target.value;cmSearch(k);};
+  host.querySelector('#cms'+k).onchange=e=>{CM.sort[k]=e.target.value;cmSearch(k);};
   cmSearch(k);}
 
 async function cmSearch(k){
   const list=document.getElementById('cml'+k);if(!list)return;
-  const q=(CM.q[k]||'').trim();
-  // the second slot with nothing typed is the suggestion case: the first skill's own
-  // neighbours, which is the only list here that is guaranteed to clear the gate
-  if(!q&&k===1&&CM.a){
+  const q=(CM.q[k]||'').trim(), act=CM.act[k]||'';
+  // An untouched second slot is the suggestion case: the first skill's own neighbours, the
+  // only list here every row of which is known to clear the gate.
+  if(!q&&!act&&k===1&&CM.a){
     if(!CM.sug){
       try{const s=await API('/api/skill?id='+CM.a.id);
         CM.sug=(s.relations||[]).filter(r=>typeof r.shared==='number'&&r.shared>=CM.min)
-          .sort((x,y)=>y.shared-x.shared).slice(0,14);}catch(_){CM.sug=[];}}
-    if(!CM.sug.length){
-      list.innerHTML=`<div class="cmhead">Nothing mergeable with this one</div>`+
-        `<div class="cmopt" style="cursor:default"><span>No skill shares `+
-        `${CM.min} counted operations with ${esc(clip(CM.a.name,24))}. Search for one anyway `+
-        `— Reconcile will say whether they can be one skill.</span></div>`;return;}
-    list.innerHTML=`<div class="cmhead">Related to ${esc(clip(CM.a.name,22))}</div>`+
-      CM.sug.map(r=>`<button class="cmopt" data-id="${r.id}"><b>${esc(r.name)}</b>`+
-        `<span><i class="sh">${r.shared} shared</i> · ${esc(r.activity||'')}</span></button>`).join('');
-    cmWire(k,list);return;}
-  if(!q){list.innerHTML=`<div class="cmhead">Start typing a name</div>`;return;}
-  let d={items:[]};
-  try{d=await API('/api/list?n=14&q='+encodeURIComponent(q));}catch(_){}
+          .sort((x,y)=>y.shared-x.shared).slice(0,40);}catch(_){CM.sug=[];}}
+    if(CM.sug.length){
+      list.innerHTML=`<div class="cmhead">Related to ${esc(clip(CM.a.name,20))}`+
+        `<span class="cmn">${CM.sug.length}</span></div>`+
+        CM.sug.map(r=>`<button class="cmopt" data-id="${r.id}"><b>${esc(r.name)}</b>`+
+          `<span><i class="sh">${r.shared} shared</i> · ${esc(r.activity||'')}</span></button>`).join('');
+      cmWire(k,list);return;}
+    list.innerHTML=`<div class="cmhead">Nothing mergeable with this one</div>`+
+      `<div class="cmnote">No skill shares ${CM.min} counted operations with `+
+      `${esc(clip(CM.a.name,24))}. Search or filter for one anyway; Reconcile reads both `+
+      `documents and decides.</div>`;
+    return;}
+  list.innerHTML=`<div class="cmhead">Loading</div>`;
+  const qs=['sort='+encodeURIComponent(CM.sort[k]||'pop')];
+  if(q)qs.push('q='+encodeURIComponent(q));
+  if(act)qs.push('act='+encodeURIComponent(act));
+  let d={items:[],total:0};
+  try{d=await API('/api/list?'+qs.join('&'));}catch(_){}
   const other=k?CM.a:CM.b;
-  const items=(d.items||[]).filter(x=>!other||x.id!==other.id);
-  if(!items.length){list.innerHTML=`<div class="cmhead">No skill by that name</div>`;return;}
-  list.innerHTML=items.map(x=>`<button class="cmopt" data-id="${x.id}"><b>${esc(x.name)}</b>`+
-    `<span>${esc(x.activity||'')}${x.capability?' · '+esc(x.capability):''}</span></button>`).join('');
+  const items=(d.items||[]).filter(x=>!other||x.id!==other.id).slice(0,40);
+  if(!items.length){list.innerHTML=`<div class="cmhead">Nothing here</div>`+
+    `<div class="cmnote">No skill matches that.</div>`;return;}
+  const what=q?`Matching "${esc(clip(q,18))}"`:(act?esc(act):'All skills');
+  list.innerHTML=`<div class="cmhead">${what}<span class="cmn">${(d.total||items.length).toLocaleString()}</span></div>`+
+    items.map(x=>`<button class="cmopt" data-id="${x.id}"><b>${esc(x.name)}</b>`+
+      `<span>${esc(x.activity||'')}${x.capability?' · '+esc(x.capability):''}`+
+      `${x.rel&&x.rel.intersect?` · <i class="sh">${x.rel.intersect} related</i>`:''}</span></button>`).join('');
   cmWire(k,list);}
 
 function cmWire(k,list){
@@ -2136,7 +2227,7 @@ async function cmPick(k,id){
   try{rec=await API('/api/skill?id='+id);}catch(_){return;}
   if(k){CM.b={id,name:rec.name,activity:rec.activity,capability:rec.capability};}
   else{CM.a={id,name:rec.name,activity:rec.activity,capability:rec.capability};CM.sug=null;}
-  CM.q[k]='';cmSlot(k);if(!k)cmSlot(1);cmVerdict();}
+  CM.q[k]='';CM.act[k]='';cmSlot(k);if(!k)cmSlot(1);cmVerdict();}
 
 async function cmVerdict(){
   const v=document.getElementById('cmv');if(!v)return;
@@ -2149,25 +2240,25 @@ async function cmVerdict(){
   if(p.have_docs&&p.have_docs[0]===false)miss.push(CM.a.name);
   if(p.have_docs&&p.have_docs[1]===false)miss.push(CM.b.name);
   if(miss.length){
-    v.innerHTML=`<div class="cmshared cmwarn">${esc(miss.join(' and '))} `+
-      `${miss.length>1?'reached':'reached'} the corpus through a listing rather than a file, `+
-      `so there is no <b>SKILL.md</b> to merge${miss.length>1?'':''}.</div>`;return;}
+    v.innerHTML=`<div class="cmshared cmwarn">${esc(miss.join(' and '))} reached the corpus `+
+      `through a listing rather than a file, so there is no <b>SKILL.md</b> to merge. `+
+      `1,722 of the 14,460 arrived that way.</div>`;return;}
   const sh=typeof p.shared==='number'?p.shared:0;
-  // a pair with no counted relation is not refused here: the count comes from the graph, and
-  // whether these two can be one skill is Reconcile's answer, made after reading both
+  // A pair with no counted relation is not refused here. The count comes from the graph, and
+  // whether these two can be one skill is Reconcile's answer, made after reading both.
   const line=sh>=CM.min
     ? `<b>${sh} shared operation${sh>1?'s':''}</b>, counted when the graph was built.`
     : `These two have <b>no counted relation</b> in the graph. Reconcile reads both documents `+
-      `and will say whether they can be one skill — it may well refuse.`;
+      `and says whether they can be one skill. It may well refuse.`;
   v.innerHTML=`<div class="cmshared">${line}</div>`+
-    `<button class="btn cmgo" id="cmgo"${CM.ready?'':' disabled'}>⧉ Merge these two →</button>`;
+    `<button class="btn cmgo" id="cmgo">⧉ Merge these two →</button>`;
   const go=document.getElementById('cmgo');
   if(go)go.onclick=()=>openMerge(CM.a.id,CM.b.id);}
 
 async function renderAdd(){const el=document.getElementById('v-add');
   try{CAPS=await API('/api/caps');}catch(e){CAPS={add:false,why:{}};}   // re-read: a restart can change it
   if(!CAPS.add)return renderAddLocalOnly(el);
-  el.innerHTML=`<h1>Upload your own skill</h1><p class="lede">Drop your <b>SKILL.md</b> or paste it in full. Everything is extracted from the file itself — you label nothing. About 20 seconds.</p>`+
+  el.innerHTML=`<h1>Upload your own skill</h1><p class="lede">Drop your <b>SKILL.md</b> or paste it in full. Everything is extracted from the file itself, so you label nothing. About 20 seconds.</p>`+
    `<div class="addwrap"><div class="form">
      <div class="drop" id="drop">⬆ Drop a <b>SKILL.md</b> here, or click to choose<input type="file" id="file" accept=".md,.markdown,.txt" hidden></div>
      <div class="orline"><span>or paste the file</span></div>
@@ -2183,7 +2274,7 @@ async function renderAdd(){const el=document.getElementById('v-add');
   file.onchange=e=>{if(e.target.files[0])readFile(e.target.files[0]);};
   // a dropped file simply fills the box, so there is one source of truth for what gets sent
   function readFile(f){const r=new FileReader();
-    r.onload=()=>{box.value=r.result;document.getElementById('fname').textContent='✓ '+f.name+' — '+r.result.length.toLocaleString()+' characters loaded';};
+    r.onload=()=>{box.value=r.result;document.getElementById('fname').textContent='✓ '+f.name+' · '+r.result.length.toLocaleString()+' characters loaded';};
     r.readAsText(f);}
   box.addEventListener('input',()=>{document.getElementById('fname').textContent='';});
   document.getElementById('a-go').onclick=()=>placeSkill(box.value.trim());}
@@ -2252,7 +2343,7 @@ function renderPlacement(r){const res=document.getElementById('a-res');const nm=
     if(ME&&ME.linked){const u=await POST('/api/sync',rec);
       const t=document.getElementById('savedmsg');
       if(t)t.innerHTML=u&&u.ok?`✓ Synced to <b>${esc(ME.linked.email||'your account')}</b>`
-                              :'⚠ Saved locally — sync failed';
+                              :'⚠ Saved locally, sync failed';
       if(!(u&&u.ok))await POST('/api/save',rec);
       return;}
     await POST('/api/save',rec);
@@ -2287,7 +2378,7 @@ async function renderMine(){const el=document.getElementById('v-mine');el.innerH
   if(!signedIn()){
     el.innerHTML=`<h1>My Skills</h1><p class="lede">Your saved skills live with your account.</p>`+
       `<div class="localonly" style="max-width:540px"><p>A saved skill has to belong to somebody. `+
-      `Sign in and this page becomes your own list — nobody else can see it or change it.</p>`+
+      `Sign in and this page becomes your own list. Nobody else can see it or change it.</p>`+
       `<p>Everything else here works without an account: browsing, search, and every skill's `+
       `relation graph.</p><div class="lofoot">`+
       `<button class="btn" onclick="askSignIn('Sign in to keep your own list.')">Sign in</button>`+
@@ -2317,9 +2408,9 @@ async function renderMine(){const el=document.getElementById('v-mine');el.innerH
   const mgh=document.getElementById('minemg');
   if(mgh){mgh.innerHTML=mg.map(mineCard).join('');wireMine(mgh);}
   const add=document.getElementById('mineadd');
-  add.innerHTML=up.length?up.map(mineCard).join(''):'<div class="empty" style="grid-column:1/-1">Nothing yet — go to <b>Add My Skill</b> and save one.</div>';
+  add.innerHTML=up.length?up.map(mineCard).join(''):'<div class="empty" style="grid-column:1/-1">Nothing yet. Go to <b>Upload</b> and save one.</div>';
   wireMine(add);
-  const fav=document.getElementById('minefav');fav.innerHTML=m.favorites.length?m.favorites.map(cardHTML).join(''):'<div class="empty" style="grid-column:1/-1">No favourites — tap ♡ on any skill.</div>';wireCards(fav);}
+  const fav=document.getElementById('minefav');fav.innerHTML=m.favorites.length?m.favorites.map(cardHTML).join(''):'<div class="empty" style="grid-column:1/-1">No favourites. Tap ♡ on any skill.</div>';wireCards(fav);}
 let SPA={min:0.70,s:null,_t:null};
 function showAdded(s){const el=document.getElementById('skillpage');const typed=(s.neighbours||[]).filter(n=>n.type);
   const sims=(s.neighbours||[]).map(n=>n.sim||0);
