@@ -321,7 +321,7 @@
       mb.innerHTML='<svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor"'+
         ' stroke-width="1.9" stroke-linecap="round"><path d="M3 5.5h14M3 10h14M3 14.5h14"/></svg>';
       var menu=document.createElement('div');menu.className='sf-menu';
-      menu.innerHTML=['Browse','Graph','Compose','Upload','My Skills']
+      menu.innerHTML=['Browse','Graph','Merge','Add','My Skills']
         .map(function(t){return '<a href="#">'+t+'</a>';}).join('');
       var shut=function(){menu.classList.remove('open');mb.setAttribute('aria-expanded','false');};
       mb.onclick=function(e){e.stopPropagation();

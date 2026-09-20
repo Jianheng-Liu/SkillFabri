@@ -648,6 +648,76 @@ def merge_can():
                     "min_shared": _merge.MIN_SHARED})
 
 
+@app.get("/api/evaluate/can")
+def evaluate_can():
+    """Whether this instance can evaluate, and the dimensions it would report."""
+    import evaluate as _ev
+    return jsonify({"ready": _merge.ready(), "why": _merge.available(),
+                    "dims": [{"key": k, "label": l, "question": q} for k, l, q in _ev.DIMS]})
+
+
+@app.post("/api/evaluate/run")
+def evaluate_run():
+    """Seven dimensions over one skill, reporting while it runs.
+
+    One model call, but it has measured 36 to 42 seconds on this provider, and a socket that
+    says nothing for forty seconds is the one that gets reaped. Same shape as the merge
+    stream: the work runs in a thread, this loop drains it and sends a comment frame while
+    it waits.
+    """
+    import evaluate as _ev
+    body = request.get_json(force=True) or {}
+    sid = body.get("id")
+    md = body.get("md") or ""
+    name = body.get("name") or ""
+    summary = body.get("summary") or ""
+    if sid is not None:
+        sid = int(sid)
+        if not (0 <= sid < D["N"]):
+            return jsonify({"error": "no such skill"}), 404
+        r = D["recs"][sid]
+        name, summary = r["name"], r.get("summary", "")
+        md = _merge.source(sid) or ""
+
+    def stream():
+        def ev(d):
+            return "data: " + json.dumps(d) + "\n\n"
+        if not _merge.ready():
+            yield ev({"t": "error", "message": "evaluation is not set up on this instance",
+                      "why": _merge.available()}); return
+        if not md.strip():
+            yield ev({"t": "error", "message": "no SKILL.md on file for this skill"}); return
+        yield ev({"t": "start", "name": name, "chars": len(md)})
+        # the gathered facts go out first: they are free, and they are what the judge is
+        # given, so a reader can see the same evidence it saw
+        yield ev({"t": "evidence", "evidence": _ev.evidence(md)})
+        q = queue.Queue()
+
+        def work():
+            try:
+                q.put(("ok", _ev.run(name, md, summary)))
+            except Exception as e:
+                q.put(("err", str(e)))
+            finally:
+                q.put(("end", None))
+
+        threading.Thread(target=work, daemon=True).start()
+        while True:
+            try:
+                kind, msg = q.get(timeout=10)
+            except queue.Empty:
+                yield ": still working\n\n"
+                continue
+            if kind == "end":
+                break
+            # a provider failure is an error, never a row of Poor
+            yield ev({"t": "done", "result": msg} if kind == "ok"
+                     else {"t": "error", "message": msg})
+
+    return app.response_class(stream(), mimetype="text/event-stream",
+                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
 @app.get("/api/merge/have")
 def merge_have():
     """Which of these skills have a SKILL.md on file.
@@ -1062,7 +1132,10 @@ def added_rec(b):
             # the text My Skills would hold a summary of a file the user can no longer get back,
             # and without the flag it could not be placed later or told apart from an upload.
             "md": b.get("md") or "", "merged": bool(b.get("merged")),
-            "merged_from": b.get("merged_from") or None, "check": b.get("check") or None}
+            "merged_from": b.get("merged_from") or None, "check": b.get("check") or None,
+            # an evaluation is kept with the skill it is about: a score with no document to
+            # read against it is a number nobody can check
+            "eval": b.get("eval") or None, "source_id": b.get("source_id")}
 
 
 @app.post("/api/save")

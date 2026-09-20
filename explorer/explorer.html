@@ -519,6 +519,38 @@ h1{font-size:27px;letter-spacing:-.03em;margin:0 0 6px;font-weight:800;text-wrap
   font-size:13.5px;padding:9px 18px;border:1px solid var(--accent);border-radius:9px}
 /* Merge. Its own layer above the card that launches it, so closing it returns you to the
    skill you were reading rather than to nothing. */
+/* the evaluation: seven rows, each a level with the span it rests on */
+#evalmodal{position:fixed;inset:0;z-index:95;display:none;align-items:center;justify-content:center;
+  background:rgba(8,10,16,.5);padding:22px;backdrop-filter:blur(3px)}
+#evalmodal.on{display:flex}
+.evwrap{max-height:60vh;overflow:auto;margin-top:2px}
+.evrow{padding:12px 0;border-top:1px solid var(--line2)}
+.evrow:first-child{border-top:0}
+.evhead{display:flex;align-items:baseline;gap:9px}
+.evnm{font-size:13.5px;font-weight:600;color:var(--ink)}
+.evq{font-size:11.5px;color:var(--muted);flex:1;min-width:0}
+.evlv{font-family:var(--mono);font-size:10.5px;padding:2px 9px;border-radius:6px;
+  border:1px solid var(--line);white-space:nowrap}
+.evlv.good{color:var(--inter);border-color:var(--inter)}
+.evlv.average{color:var(--contain);border-color:var(--contain)}
+.evlv.poor{color:#e0644f;border-color:#e0644f}
+.evlv.unknown{color:var(--muted)}
+.evwhy{font-size:12.5px;line-height:1.6;color:var(--ink2);margin-top:7px}
+.evq2{display:block;font-family:var(--mono);font-size:11px;line-height:1.55;color:var(--ink2);
+  border-left:2px solid var(--line);padding:3px 0 3px 10px;margin:6px 0 0;overflow-wrap:anywhere}
+.evraise{display:block;font-size:11.5px;color:var(--muted);margin-top:6px;font-style:italic}
+.evfacts{border:1px solid var(--line);border-radius:10px;background:var(--panel2);
+  padding:10px 13px;font-family:var(--mono);font-size:10.5px;line-height:1.7;color:var(--ink2)}
+.evfacts b{color:var(--muted);font-weight:400}
+.evnote{font-size:11.5px;color:var(--muted);margin-top:13px}
+.evtally{display:flex;gap:6px;margin:11px 0 3px;flex-wrap:wrap}
+/* the evaluation, where it sits on a skill page */
+.evmini{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 16px}
+.evchip{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:5px;
+  border:1px solid var(--line);color:var(--ink2)}
+.evchip.good{color:var(--inter);border-color:var(--inter)}
+.evchip.average{color:var(--contain);border-color:var(--contain)}
+.evchip.poor{color:#e0644f;border-color:#e0644f}
 #mergemodal{position:fixed;inset:0;z-index:95;display:none;align-items:center;justify-content:center;background:rgba(8,10,16,.5);padding:22px;backdrop-filter:blur(3px)}
 #mergemodal.on{display:flex}
 .mgpair{display:grid;grid-template-columns:1fr 26px 1fr;gap:10px;align-items:stretch;margin:2px 0 4px}
@@ -548,7 +580,7 @@ h1{font-size:27px;letter-spacing:-.03em;margin:0 0 6px;font-weight:800;text-wrap
 .mgoff{font-size:11.5px;line-height:1.55;color:var(--muted);margin:0 0 16px;padding:9px 10px;
   border-left:2px solid var(--line)}
 
-/* Compose: two skills in, one out */
+/* Merge: two skills in, one out */
 .cmwrap{display:grid;grid-template-columns:1fr 46px 1fr;gap:0;align-items:start;margin-top:22px}
 .cmplus{display:flex;align-items:center;justify-content:center;font-size:19px;color:var(--muted);
   padding-top:46px}
@@ -707,8 +739,9 @@ catch(e){document.documentElement.setAttribute('data-theme','light');}})();
     <nav id="nav">
       <button data-v="browse" class="on">Browse</button>
       <button data-v="graph">Graph</button>
-      <button data-v="compose">Compose</button>
-      <button data-v="add">Upload</button>
+      <button data-v="merge">Merge</button>
+      <button data-v="evaluate">Evaluate</button>
+      <button data-v="add">Add</button>
       <button data-v="mine">My Skills</button>
     </nav>
     <div class="bartools">
@@ -719,7 +752,8 @@ catch(e){document.documentElement.setAttribute('data-theme','light');}})();
 </header>
 <main>
   <section class="view pad" id="v-browse"></section>
-  <section class="view pad" id="v-compose"></section>
+  <section class="view pad" id="v-merge"></section>
+  <section class="view pad" id="v-evaluate"></section>
   <section class="view pad" id="v-add"></section>
   <section class="view pad" id="v-mine"></section>
 </main>
@@ -756,6 +790,7 @@ catch(e){document.documentElement.setAttribute('data-theme','light');}})();
 </div>
 <div id="infomodal" onclick="if(event.target.id==='infomodal')closeInfo()"></div>
 <div id="mergemodal" onclick="if(event.target.id==='mergemodal')closeMerge()"></div>
+<div id="evalmodal" onclick="if(event.target.id==='evalmodal')closeEval()"></div>
 <script src="/icons.js"></script>
 <script>
 const API=p=>fetch(p).then(r=>r.json());
@@ -889,14 +924,15 @@ function show(v){
   document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   if(v==='browse'&&!R.browse){renderBrowse();R.browse=1;}
-  if(v==='compose'&&!R.compose){renderCompose();R.compose=1;}
+  if(v==='merge'&&!R.merge){renderMerge();R.merge=1;}
+  if(v==='evaluate'&&!R.evaluate){renderEvaluate();R.evaluate=1;}
   if(v==='add'&&!R.add){renderAdd();R.add=1;}
   if(v==='mine'){renderMine();}
   if(v==='graph'){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==='graph'));
     API('/api/list?sort=shared').then(d=>{const t=(d.items||[])[0];if(t)openSkill(t.id);});}}
 const R={};
-/* the landing page routes by hash: #graph #graph=<id> #browse #browse=<activity> #compose
-   #compose=<a>,<b> #add #mine #dups #q=… */
+/* the landing page routes by hash: #graph #graph=<id> #browse #browse=<activity> #merge
+   #merge=<a>,<b> (#compose still accepted) #add #mine #dups #q=… */
 function applyHash(){
   if((location.hash||'')==='#signin'){show('mine');
     setTimeout(()=>{if(!signedIn())askSignIn('Sign in to keep your own list.');},80);return true;}
@@ -906,13 +942,21 @@ function applyHash(){
     if(!R.browse){renderBrowse().then(()=>{R.browse=1;go();});}else go();};
   if(h.startsWith('q=')){const q=h.slice(2);const b=document.getElementById('q');if(b)b.value=q;toBrowse({q});return true;}
   if(h==='dups'){toBrowse({sort:'dups',has:'dups'});return true;}
-  if(h==='compose'||h.startsWith('compose=')){
-    show('compose');
-    const pair=h.startsWith('compose=')?h.slice(8).split(',').map(Number).filter(n=>n>=0):null;
+  if(h==='evaluate'||h.startsWith('evaluate=')){
+    show('evaluate');
+    const id=h.startsWith('evaluate=')?+h.slice(9):null;
+    const go=()=>{if(id!=null&&id>=0)openEval(id);};
+    if(!R.evaluate){renderEvaluate().then(()=>{R.evaluate=1;go();});}else go();
+    return true;}
+  if(h==='merge'||h.startsWith('merge=')||h==='compose'||h.startsWith('compose=')){
+    show('merge');
+    // #compose was the old spelling of this route; links to it still exist
+    const q=h.startsWith('merge=')?h.slice(6):(h.startsWith('compose=')?h.slice(8):'');
+    const pair=q?q.split(',').map(Number).filter(n=>n>=0):null;
     // sequential: each pick now re-renders the other slot, and two of them racing would have
     // one redraw over the other's result
     const go=async()=>{if(pair&&pair.length===2){await cmPick(0,pair[0]);await cmPick(1,pair[1]);}};
-    if(!R.compose){renderCompose().then(()=>{R.compose=1;go();});}else go();
+    if(!R.merge){renderMerge().then(()=>{R.merge=1;go();});}else go();
     return true;}
   if(h.startsWith('browse=')){const v=h.slice(7);show('browse');
     const go=()=>selectDim('activity',v);
@@ -1263,6 +1307,7 @@ function renderSkillPage(s){const el=document.getElementById('skillpage');const 
       `<span class="tag act" style="background:${actCol(s.activity)}">${esc(s.activity)}</span>`+
       `<span class="tag cap">${esc(s.capability)}</span>`+
       `<button class="favb ${on?'on':''}" id="spfav">${on?'♥ Saved':'♡ Save'}</button>`+
+      `<button class="favb" id="speval" title="Judge this on seven dimensions">⚖ Evaluate</button>`+
     `</div>`+
     `<div class="spctl">`+
       `<span class="spslider">similarity ≥ <b id="spsv">${SP.minsim.toFixed(2)}</b>`+
@@ -1287,6 +1332,8 @@ function renderSkillPage(s){const el=document.getElementById('skillpage');const 
     if(!r||r.error){askSignIn('Sign in to save this skill.');return;}
     if(r.on)FAVS.add(s.id);else FAVS.delete(s.id);const b=document.getElementById('spfav');
     b.classList.toggle('on',r.on);b.textContent=r.on?'♥ Saved':'♡ Save';};
+  const eb=document.getElementById('speval');
+  if(eb)eb.onclick=()=>openEval(s.id,s);
   wireSplit();
   const sl=document.getElementById('spsl');sl.oninput=e=>{SP.minsim=+e.target.value;document.getElementById('spsv').textContent=SP.minsim.toFixed(2);clearTimeout(SP._t);SP._t=setTimeout(()=>loadSPGraph(true),110);};
   loadSPGraph(false,true);el.classList.add('on');}
@@ -1348,7 +1395,7 @@ async function renderMergePanel(nodes,edges){
   const nm={};nodes.forEach(n=>nm[n.id]=n);
   // pairs involving THIS skill, which is what the page is about. Among-neighbour pairs are
   // mergeable too — 877 of them on a busy skill — but a list that long is not a list; naming
-  // both ends yourself is what Compose is for.
+  // both ends yourself is what the Merge page is for.
   const pairs=edges
     .filter(e=>(e.a===c||e.b===c)&&e.type!=='near'
                &&typeof e.shared==='number'&&e.shared>=min&&nm[e.a]&&nm[e.b])
@@ -1382,7 +1429,7 @@ function paintMergePanel(){
                ?`<button class="cmclear" id="mgless" style="margin:0 0 4px">Show fewer</button>`:''))+
       (off?`<div class="mgoff">Merging is not set up on this instance. It needs the SKILL.md `+
            `bundle and an API key, which the hosted copy does not carry. Run it locally to `+
-           `compose from these.</div>`:'')+
+           `merge them there.</div>`:'')+
     `</div></div>`;
   const sec=host.querySelector('.relsec'),h=host.querySelector('.relhead');
   if(SPFOLD.merge)sec.classList.add('fold');
@@ -1449,7 +1496,7 @@ function renderAddLocalOnly(el){
   // missing, and the answer is the command that supplies it. Telling that reader to "run it
   // locally" is telling them to do what they are already doing.
   if(ME&&ME.upstream)return renderAddNeeds(el);
-  el.innerHTML=`<h1>Upload your own skill</h1>`+
+  el.innerHTML=`<h1>Add your own skill</h1>`+
     `<p class="lede">This needs a local deployment for now.</p>`+
     `<div class="localonly">`+
       `<p>Placing a skill reads your <b>SKILL.md</b>, labels it with a model, and searches the `+
@@ -1484,7 +1531,7 @@ function renderAddNeeds(el){
   if(!why.api_key)need.push(['No API key is set.',
     'Reading and labelling a SKILL.md calls a model.',
     'export OPENROUTER_API_KEY=...']);
-  el.innerHTML=`<h1>Upload your own skill</h1>`+
+  el.innerHTML=`<h1>Add your own skill</h1>`+
     `<p class="lede">Two more things and this works.</p>`+
     `<div class="localonly" style="max-width:660px">`+
       need.map(([t,d,c])=>`<p><b>${t}</b> ${d}</p><pre class="localcmd">${esc(c)}</pre>`).join('')+
@@ -2096,16 +2143,16 @@ const CM={a:null,b:null,q:['',''],act:['',''],sort:['pop','pop'],sug:[null,null]
 const CM_SORTS=[['pop','popularity'],['shared','most connected'],['dups','most duplicated'],
                 ['updated','recently updated'],['name','name']];
 
-async function renderCompose(){
-  const el=document.getElementById('v-compose');
+async function renderMerge(){
+  const el=document.getElementById('v-merge');
   try{CAPS=await API('/api/caps');}catch(_){CAPS={merge:false,merge_why:{}};}
   // Off on the public site by choice, off locally because something is missing. Those are
   // different problems with different answers, and the page that offers two search boxes over
   // documents it does not have is neither of them.
-  if(!CAPS.merge)return (ME&&ME.upstream)?renderComposeNeeds(el):renderComposeLocalOnly(el);
+  if(!CAPS.merge)return (ME&&ME.upstream)?renderMergeNeeds(el):renderMergeLocalOnly(el);
   CM.min=CAPS.min_shared||2;
   if(!CM.dims){try{CM.dims=(await API('/api/dims')).activity||[];}catch(_){CM.dims=[];}}
-  el.innerHTML=`<h1>Compose a skill from two</h1>`+
+  el.innerHTML=`<h1>Merge two skills into one</h1>`+
     `<p class="lede">Two skills that share concrete operations are, often enough, one skill `+
     `written twice. Pick both and one <b>SKILL.md</b> is written from them: the workflow of `+
     `each, the disagreements settled, nothing dropped silently.</p>`+
@@ -2127,8 +2174,8 @@ export CRS_OAI_KEY=...          <span class="cmt"># or OPENROUTER_API_KEY</span>
 
 python explorer/app.py --port 8000</pre>`;}
 
-function renderComposeLocalOnly(el){
-  el.innerHTML=`<h1>Compose a skill from two</h1>`+
+function renderMergeLocalOnly(el){
+  el.innerHTML=`<h1>Merge two skills into one</h1>`+
     `<p class="lede">This needs a local deployment for now.</p>`+
     `<div class="localonly">`+
       `<p>A merge reads both skills' <b>SKILL.md</b> in full, works out the single skill that `+
@@ -2146,7 +2193,7 @@ function renderComposeLocalOnly(el){
       `</div>`+
     `</div>`;}
 
-function renderComposeNeeds(el){
+function renderMergeNeeds(el){
   const why=(CAPS&&CAPS.merge_why)||{};
   const need=[];
   if(!why.docs)need.push(['The SKILL.md bundle is missing.',
@@ -2155,7 +2202,7 @@ function renderComposeNeeds(el){
   if(!why.api_key)need.push(['No API key is set.',
     'Planning, writing and checking a merged skill each call a model.',
     'export CRS_OAI_KEY=...        # or OPENROUTER_API_KEY']);
-  el.innerHTML=`<h1>Compose a skill from two</h1>`+
+  el.innerHTML=`<h1>Merge two skills into one</h1>`+
     `<p class="lede">${need.length>1?'Two more things':'One more thing'} and this works.</p>`+
     `<div class="localonly" style="max-width:660px">`+
       need.map(([t,d,c])=>`<p><b>${t}</b> ${d}</p><pre class="localcmd">${esc(c)}</pre>`).join('')+
@@ -2281,10 +2328,210 @@ async function cmVerdict(){
   const go=document.getElementById('cmgo');
   if(go)go.onclick=()=>openMerge(CM.a.id,CM.b.id);}
 
+/* ===== EVALUATE =====
+   Seven dimensions over one document. Five are SkillNet's published set, kept in their
+   wording so a level here is comparable to the 6,491 SkillNet labels already in this
+   corpus; two are added because a market needs them and that set has neither. Discovery,
+   because routing is what the graph is for and SkillMD-138K finds the metadata defective in
+   67% of 138,133 files. Portability, because 36% of the documents here name or assume a
+   harness and a third of them are bound to one by frontmatter alone.
+
+   No total. Three separate sources say not to: the working draft restricts a total to one
+   rule version and one configuration, ACES measured roughly no correlation between a
+   static score and real task lift, and the evaluation survey criticises single-score
+   aggregation directly. A number out of ten here would be the marketplace badge we argue
+   against, wearing our own colours. */
+let EV={id:null,name:'',res:null,t0:0,tick:null,saved:false};
+
+function evShell(body,foot){
+  return `<div class="imcard" style="max-width:660px">`+
+    `<div class="imhead"><button class="x" onclick="closeEval()">✕</button>`+
+      `<h2>Evaluate</h2>`+
+      `<div class="dsum" style="margin:9px 0 0">${esc(EV.name||'')}</div></div>`+
+    `<div class="imbody">${body}</div>`+
+    (foot?`<div class="imfoot">${foot}</div>`:'')+`</div>`;}
+
+function evPaint(body,foot){document.getElementById('evalmodal').innerHTML=evShell(body,foot);}
+function closeEval(){
+  if(EV.tick){clearInterval(EV.tick);EV.tick=null;}
+  document.getElementById('evalmodal').classList.remove('on');}
+
+const evCls=l=>({Good:'good',Average:'average',Poor:'poor'})[l]||'unknown';
+
+function evFacts(ev){
+  if(!ev)return '';
+  const bits=[];
+  if((ev.frontmatter||[]).length)bits.push(`<b>frontmatter</b> ${esc(ev.frontmatter.join(', '))}`);
+  if((ev.missing_spec_keys||[]).length)bits.push(`<b>missing</b> ${esc(ev.missing_spec_keys.join(', '))}`);
+  if((ev.harness_only_keys||[]).length)bits.push(`<b>harness-only keys</b> ${esc(ev.harness_only_keys.join(', '))}`);
+  if((ev.harnesses_named||[]).length)bits.push(`<b>names</b> ${esc(ev.harnesses_named.join(', '))}`);
+  if((ev.personal_paths||[]).length)bits.push(`<b>personal paths</b> ${esc(ev.personal_paths.join(' '))}`);
+  if((ev.os_specific_commands||[]).length)bits.push(`<b>os-specific</b> ${esc(ev.os_specific_commands.join(' '))}`);
+  if((ev.referenced_files||[]).length)bits.push(`<b>references</b> ${esc(ev.referenced_files.join(' '))}`);
+  const z=ev.size||{};
+  bits.push(`<b>document</b> ${((z.chars||0)/1000).toFixed(1)}KB · ${z.sections||0} sections · ${z.code_blocks||0} code blocks`);
+  bits.push(`<b>capture</b> ${esc(ev.capture||'')}`);
+  return `<div class="evfacts">${bits.join('<br>')}</div>`;}
+
+function evResult(r){
+  const tally={};
+  r.order.forEach(k=>{const l=r.dimensions[k].level;tally[l]=(tally[l]||0)+1;});
+  const chips=['Good','Average','Poor','Unknown'].filter(l=>tally[l])
+    .map(l=>`<span class="evlv ${evCls(l)}">${tally[l]} ${l.toLowerCase()}</span>`).join('');
+  const rows=r.order.map(k=>{
+    const d=r.dimensions[k];
+    return `<div class="evrow"><div class="evhead">`+
+      `<span class="evnm">${esc(d.label)}</span>`+
+      `<span class="evq">${esc(d.question)}</span>`+
+      `<span class="evlv ${evCls(d.level)}">${esc(d.level)}</span></div>`+
+      (d.reason?`<div class="evwhy">${esc(d.reason)}</div>`:'')+
+      (d.evidence||[]).map(q=>`<span class="evq2">${esc(q)}</span>`).join('')+
+      (d.what_would_raise_it?`<span class="evraise">${esc(d.what_would_raise_it)}</span>`:'')+
+      `</div>`;}).join('');
+  return `<div class="dsum" style="margin:0 0 12px">${esc(r.summary||'')}</div>`+
+    `<div class="evtally">${chips}</div>`+
+    `<div class="evwrap">${rows}</div>`+
+    `<div class="evnote">No total. A single number would rank these against each other on a `+
+    `scale nobody has shown predicts anything, which is the badge this project argues with.</div>`;}
+
+async function openEval(id,rec){
+  const m=document.getElementById('evalmodal');
+  EV={id:id,name:(rec&&rec.name)||'',res:null,t0:Date.now(),tick:null,saved:false};
+  m.classList.add('on');
+  evPaint(`<div class="empty"><span class="spin"></span><div style="margin-top:12px">Reading the document…</div></div>`,'');
+  let r;
+  try{
+    r=await fetch('/api/evaluate/run',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(id!=null?{id:id}:{md:(rec&&rec.md)||'',name:(rec&&rec.name)||'',summary:(rec&&rec.summary)||''})});
+  }catch(e){return evPaint(`<div class="empty">${esc(String(e))}</div>`,
+    `<button class="btn" onclick="closeEval()">Close</button>`);}
+  const rd=r.body.getReader(),dec=new TextDecoder();let buf='',facts='';
+  for(;;){
+    const {value,done}=await rd.read();
+    if(done)break;
+    buf+=dec.decode(value,{stream:true});
+    let ix;
+    while((ix=buf.indexOf('\n\n'))>=0){
+      const raw=buf.slice(0,ix);buf=buf.slice(ix+2);
+      const line=raw.split('\n').filter(l=>l.startsWith('data:')).map(l=>l.slice(5).trim()).join('');
+      if(!line)continue;
+      let e;try{e=JSON.parse(line);}catch(_){continue;}
+      if(e.t==='start'){EV.name=e.name||EV.name;}
+      else if(e.t==='evidence'){
+        facts=evFacts(e.evidence);
+        evPaint(facts+`<div class="empty" style="margin-top:14px"><span class="spin"></span>`+
+          `<div style="margin-top:12px">Judging seven dimensions<span id="evclk"></span></div></div>`,'');
+        if(!EV.tick){EV.t0=Date.now();EV.tick=setInterval(()=>{
+          const c=document.getElementById('evclk');
+          if(!c){clearInterval(EV.tick);EV.tick=null;return;}
+          c.textContent=' · '+Math.round((Date.now()-EV.t0)/1000)+'s';},1000);}}
+      else if(e.t==='done'){
+        if(EV.tick){clearInterval(EV.tick);EV.tick=null;}
+        EV.res=e.result;
+        evPaint(evResult(e.result),
+          `<button class="imsrc" onclick="closeEval()">Close</button>`+
+          `<button class="btn" id="evsave">♥ Save to My Skills</button>`);
+        const b=document.getElementById('evsave');
+        if(b)b.onclick=()=>evSave(b);
+        evSave(null,true);   // quietly, because the result is worth keeping by default
+        return;}
+      else if(e.t==='error'){
+        if(EV.tick){clearInterval(EV.tick);EV.tick=null;}
+        // a provider failure is an error here, never a row of Poor
+        return evPaint(facts+`<div class="empty" style="margin-top:14px">${esc(e.message||'evaluation failed')}</div>`,
+          `<button class="btn" onclick="closeEval()">Close</button>`);}}}
+  if(EV.tick){clearInterval(EV.tick);EV.tick=null;}
+  evPaint(facts+`<div class="empty">the connection closed before the evaluation finished</div>`,
+    `<button class="btn" onclick="closeEval()">Close</button>`);}
+
+async function evSave(btn,quiet){
+  if(!EV.res||EV.saved)return;
+  const rec=(EV.id!=null&&D_REC[EV.id])||null;
+  const body={name:EV.name||'evaluated skill',
+    summary:(rec&&rec.summary)||EV.res.summary||'',
+    activity:(rec&&rec.activity)||'—',capability:(rec&&rec.capability)||'—',
+    tech:(rec&&rec.tech)||[],steps:(rec&&rec.steps)||[],
+    source_id:EV.id,eval:EV.res,ts:Date.now()};
+  let r=null;
+  try{r=await POST('/api/save',body);}catch(_){}
+  if(r&&r.ok){EV.saved=true;if(btn){btn.textContent='♥ Saved';btn.disabled=true;}return;}
+  // signed out is the ordinary case, and losing the result to a dialog would be worse
+  if(!quiet&&btn)askSignIn('Sign in to keep this evaluation.');
+  else if(btn)btn.textContent='♡ Sign in to save';}
+
+const D_REC={};
+
+async function renderEvaluate(){
+  const el=document.getElementById('v-evaluate');
+  let can={ready:false,dims:[]};
+  try{can=await API('/api/evaluate/can');}catch(_){}
+  if(!can.ready){
+    el.innerHTML=`<h1>Evaluate a skill</h1>`+
+      `<p class="lede">This needs a local deployment for now.</p>`+
+      `<div class="localonly">`+
+        `<p>Evaluating reads the whole document and judges it on seven dimensions. That needs `+
+        `every skill's <b>SKILL.md</b> and an API key, neither of which the hosted copy `+
+        `carries.</p>`+
+        `<div class="eyebrow">Run it yourself</div>`+
+        cmLocalCmd("every skill's SKILL.md, which evaluation reads in full (38 MB)",
+                   "python tools/fetch_data.py --only skillmd.zip")+
+        `<div class="lofoot"><a class="btn" href="https://github.com/Jianheng-Liu/SkillFabri" target="_blank" rel="noopener">↗ Repository and setup</a></div>`+
+      `</div>`;
+    return true;}
+  if(!EVP.dims)EVP.dims=can.dims||[];
+  if(!EVP.acts){try{EVP.acts=(await API('/api/dims')).activity||[];}catch(_){EVP.acts=[];}}
+  el.innerHTML=`<h1>Evaluate a skill</h1>`+
+    `<p class="lede">Seven dimensions, judged from the document alone. Five are `+
+    `SkillNet's published set so a level here is comparable to theirs; two are added because `+
+    `a market needs them: whether an agent can tell when to use it, and whether it would run `+
+    `on another agent at all.</p>`+
+    `<div class="evtally" style="margin:0 0 18px">`+
+      (can.dims||[]).map(d=>`<span class="evchip">${esc(d.label)}</span>`).join('')+`</div>`+
+    `<div style="max-width:420px"><div id="evpick"></div></div>`;
+  evSlot();
+  return true;}
+
+const EVP={q:'',act:'',sort:'pop',dims:null,acts:null};
+
+function evSlot(){
+  const host=document.getElementById('evpick');if(!host)return;
+  host.className='cmslot';
+  host.innerHTML=`<input class="cmq" id="evq" placeholder="Search a skill" value="${esc(EVP.q)}" autocomplete="off">`+
+    `<div class="cmfacets">`+
+      `<select class="cmsel" id="eva"><option value="">every activity</option>`+
+        (EVP.acts||[]).map(d=>`<option value="${esc(d.val)}"${EVP.act===d.val?' selected':''}>${esc(d.val)} (${d.count})</option>`).join('')+
+      `</select>`+
+      `<select class="cmsel" id="evs">`+
+        CM_SORTS.map(([v,l])=>`<option value="${v}"${EVP.sort===v?' selected':''}>${esc(l)}</option>`).join('')+
+      `</select></div><div class="cmlist" id="evlist"></div>`;
+  const i=host.querySelector('#evq');
+  i.oninput=()=>{EVP.q=i.value;clearTimeout(EVP._t);EVP._t=setTimeout(evSearch,180);};
+  host.querySelector('#eva').onchange=e=>{EVP.act=e.target.value;evSearch();};
+  host.querySelector('#evs').onchange=e=>{EVP.sort=e.target.value;evSearch();};
+  evSearch();}
+
+async function evSearch(){
+  const list=document.getElementById('evlist');if(!list)return;
+  const qs=['sort='+encodeURIComponent(EVP.sort||'pop')];
+  if(EVP.q.trim())qs.push('q='+encodeURIComponent(EVP.q.trim()));
+  if(EVP.act)qs.push('act='+encodeURIComponent(EVP.act));
+  list.innerHTML=`<div class="cmhead">Loading</div>`;
+  let d={items:[],total:0};
+  try{d=await API('/api/list?'+qs.join('&'));}catch(_){}
+  const items=(d.items||[]).slice(0,40);
+  if(!items.length){list.innerHTML=`<div class="cmhead">Nothing here</div>`;return;}
+  items.forEach(x=>D_REC[x.id]=x);
+  const what=EVP.q.trim()?`Matching "${esc(clip(EVP.q.trim(),18))}"`:(EVP.act?esc(EVP.act):'All skills');
+  list.innerHTML=`<div class="cmhead">${what}<span class="cmn">${(d.total||items.length).toLocaleString()}</span></div>`+
+    items.map(x=>`<button class="cmopt" data-id="${x.id}"><b>${esc(x.name)}</b>`+
+      `<span>${esc(x.activity||'')}${x.capability?' · '+esc(x.capability):''}</span></button>`).join('');
+  list.querySelectorAll('.cmopt[data-id]').forEach(b=>
+    b.onclick=()=>openEval(+b.dataset.id,D_REC[+b.dataset.id]));}
+
 async function renderAdd(){const el=document.getElementById('v-add');
   try{CAPS=await API('/api/caps');}catch(e){CAPS={add:false,why:{}};}   // re-read: a restart can change it
   if(!CAPS.add)return renderAddLocalOnly(el);
-  el.innerHTML=`<h1>Upload your own skill</h1><p class="lede">Drop your <b>SKILL.md</b> or paste it in full. Everything is extracted from the file itself, so you label nothing. About 20 seconds.</p>`+
+  el.innerHTML=`<h1>Add your own skill</h1><p class="lede">Drop your <b>SKILL.md</b> or paste it in full. Everything is extracted from the file itself, so you label nothing. About 20 seconds.</p>`+
    `<div class="addwrap"><div class="form">
      <div class="drop" id="drop">⬆ Drop a <b>SKILL.md</b> here, or click to choose<input type="file" id="file" accept=".md,.markdown,.txt" hidden></div>
      <div class="orline"><span>or paste the file</span></div>
@@ -2434,7 +2681,7 @@ async function renderMine(){const el=document.getElementById('v-mine');el.innerH
   const mgh=document.getElementById('minemg');
   if(mgh){mgh.innerHTML=mg.map(mineCard).join('');wireMine(mgh);}
   const add=document.getElementById('mineadd');
-  add.innerHTML=up.length?up.map(mineCard).join(''):'<div class="empty" style="grid-column:1/-1">Nothing yet. Go to <b>Upload</b> and save one.</div>';
+  add.innerHTML=up.length?up.map(mineCard).join(''):'<div class="empty" style="grid-column:1/-1">Nothing yet. Go to <b>Add</b> and save one.</div>';
   wireMine(add);
   const fav=document.getElementById('minefav');fav.innerHTML=m.favorites.length?m.favorites.map(cardHTML).join(''):'<div class="empty" style="grid-column:1/-1">No favourites. Tap ♡ on any skill.</div>';wireCards(fav);}
 let SPA={min:0.70,s:null,_t:null};
@@ -2460,6 +2707,8 @@ function showAdded(s){const el=document.getElementById('skillpage');const typed=
         `<span class="rs">${(n.sim||0).toFixed(2)}</span></div>`;}).join('')+
     `</div></div></div></div>`;
   el.querySelectorAll('.relrow').forEach(r=>r.onclick=()=>showFullInfo(+r.dataset.id));
+  const eb=document.getElementById('speval');
+  if(eb)eb.onclick=()=>openEval(s.id,s);
   wireSplit();
   const sl=document.getElementById('spsl');sl.oninput=e=>{SPA.min=+e.target.value;document.getElementById('spsv').textContent=SPA.min.toFixed(2);clearTimeout(SPA._t);SPA._t=setTimeout(()=>drawAdded(true),110);};
   drawAdded(false);el.classList.add('on');}
