@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SkillFabri — SE Agent Skill Market</title>
+<title>SkillFabri · AI Agent Skill Market</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
@@ -475,7 +475,12 @@ h1{font-size:27px;letter-spacing:-.03em;margin:0 0 6px;font-weight:800;text-wrap
 .spin{width:22px;height:22px;border:2.5px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;display:inline-block;vertical-align:middle}@keyframes sp{to{transform:rotate(360deg)}}
 .legend{display:flex;gap:15px;flex-wrap:wrap;font-size:12px;color:var(--ink2);margin:8px 0}.legend span{display:flex;align-items:center;gap:6px}
 /* ---- full-screen skill page ---- */
-#skillpage{position:fixed;inset:var(--hh) 0 0 0;z-index:70;background:var(--bg);display:none;flex-direction:column}
+/* Below the header, not above it. The header has a backdrop-filter, which makes it a stacking
+   context, so .whomenu's z-index:80 is 80 *within the header* and cannot climb past a sibling
+   of the header. At 70 this page covered the account menu and the phone nav, both of which
+   hang below the header bar into the area this page owns. It starts at --hh and never draws
+   over the header anyway, so it has no business outranking it. */
+#skillpage{position:fixed;inset:var(--hh) 0 0 0;z-index:30;background:var(--bg);display:none;flex-direction:column}
 #skillpage.on{display:flex}
 .sptop{display:flex;align-items:center;gap:11px;padding:14px 26px 12px;background:color-mix(in srgb,var(--panel) 86%,transparent);flex-wrap:wrap}
 .imtop{display:flex;align-items:flex-start;gap:12px}
@@ -1430,7 +1435,7 @@ function renderAddLocalOnly(el){
   // locally" is telling them to do what they are already doing.
   if(ME&&ME.upstream)return renderAddNeeds(el);
   el.innerHTML=`<h1>Upload your own skill</h1>`+
-    `<p class="lede">This one runs on your machine, not here.</p>`+
+    `<p class="lede">This needs a local deployment for now.</p>`+
     `<div class="localonly">`+
       `<p>Placing a skill reads your <b>SKILL.md</b>, labels it with a model, and searches the `+
       `corpus for neighbours. That needs a gigabyte of vectors and an API key, and neither `+
@@ -2109,7 +2114,7 @@ python explorer/app.py --port 8000</pre>`;}
 
 function renderComposeLocalOnly(el){
   el.innerHTML=`<h1>Compose a skill from two</h1>`+
-    `<p class="lede">This one runs on your machine, not here.</p>`+
+    `<p class="lede">This needs a local deployment for now.</p>`+
     `<div class="localonly">`+
       `<p>A merge reads both skills' <b>SKILL.md</b> in full, works out the single skill that `+
       `does both jobs, writes it, and checks what it wrote. That needs every document in the `+
