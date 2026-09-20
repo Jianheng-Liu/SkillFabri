@@ -523,19 +523,68 @@ h1{font-size:27px;letter-spacing:-.03em;margin:0 0 6px;font-weight:800;text-wrap
 .mgplus{display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--muted)}
 .mgnote{font-size:12.5px;line-height:1.6;color:var(--ink2)}
 .mgnote b{color:var(--ink)}
+/* mergeable pairs, listed beside the graph they are drawn in */
+.mgcount{float:right;font-family:var(--mono);font-size:10px;letter-spacing:0;
+  text-transform:none;color:var(--muted)}
+.mgrows{display:flex;flex-direction:column;gap:1px;margin:2px 0 16px}
+.mgrow{padding:9px 10px;border-radius:9px;border:1px solid transparent;cursor:default}
+.mgrow:hover{background:var(--panel2);border-color:var(--line)}
+.mgrow.off{opacity:.55}
+.mgpair{display:flex;align-items:baseline;gap:7px;font-size:12.5px;overflow-wrap:anywhere}
+.mgpair b{font-weight:600;color:var(--ink)}
+.mgamp{color:var(--muted)}
+.mgmeta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:5px;
+  font-size:11px;color:var(--muted);font-family:var(--mono)}
+.mggo{border:1px solid var(--line);background:var(--panel);color:var(--ink2);cursor:pointer;
+  border-radius:7px;padding:3px 9px;font:inherit;font-size:11px;white-space:nowrap}
+.mggo:hover{border-color:var(--inter);color:var(--inter)}
+.mgno{color:var(--muted);font-style:italic;text-align:right}
+.mgoff{font-size:11.5px;line-height:1.55;color:var(--muted);margin:0 0 16px;padding:9px 10px;
+  border-left:2px solid var(--line)}
+
+/* Compose: two skills in, one out */
+.cmwrap{display:grid;grid-template-columns:1fr 46px 1fr;gap:0;align-items:start;margin-top:22px}
+.cmplus{display:flex;align-items:center;justify-content:center;font-size:19px;color:var(--muted);
+  padding-top:46px}
+.cmslot{border:1px solid var(--line);border-radius:13px;background:var(--panel);overflow:hidden}
+.cmslot.filled{border-color:var(--inter)}
+.cmq{width:100%;border:0;border-bottom:1px solid var(--line);background:transparent;
+  color:var(--ink);font:inherit;font-size:13px;padding:13px 15px;outline:none}
+.cmq::placeholder{color:var(--muted)}
+.cmlist{max-height:300px;overflow:auto}
+.cmopt{display:block;width:100%;text-align:left;border:0;background:transparent;cursor:pointer;
+  padding:9px 15px;font:inherit;color:var(--ink);border-bottom:1px solid var(--line)}
+.cmopt:last-child{border-bottom:0}
+.cmopt:hover{background:var(--panel2)}
+.cmopt b{display:block;font-size:12.5px;font-weight:600;overflow-wrap:anywhere}
+.cmopt span{display:block;font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px}
+.cmopt .sh{color:var(--inter)}
+.cmhead{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);padding:11px 15px 7px}
+.cmpicked{padding:15px}
+.cmpicked h3{margin:0;font-size:15px;font-weight:650;overflow-wrap:anywhere}
+.cmpicked .mt{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:7px}
+.cmclear{border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;
+  border-radius:7px;padding:3px 9px;font:inherit;font-size:11px;margin-top:11px}
+.cmclear:hover{color:var(--ink);border-color:var(--ink2)}
+.cmverdict{margin:24px auto 0;max-width:620px;text-align:center}
+.cmshared{font-size:13px;color:var(--ink2);line-height:1.6}
+.cmshared b{color:var(--ink)}
+.cmwarn{color:var(--contain)}
+.cmgo{margin-top:16px}
 /* the run log: one line per stage, the current one marked */
 .mglog{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:9px}
-.mglog li{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--muted)}
+.mglog li{display:grid;grid-template-columns:8px 1fr;gap:10px;align-items:start;font-size:13px;color:var(--muted)}
 .mglog li.on{color:var(--ink)}
 .mglog li.ok{color:var(--ink2)}
-.mgdot{width:8px;height:8px;border-radius:50%;background:var(--line);flex:none}
+.mgdot{width:8px;height:8px;border-radius:50%;background:var(--line);flex:none;margin-top:4.8px}
 .mglog li.on .mgdot{background:var(--accent);animation:mgpulse 1.1s ease-in-out infinite}
 .mglog li.ok .mgdot{background:var(--inter)}
 /* each step reports what it found, not that it happened: the four steps around `write` are
    the ones that decide whether the skill should exist and whether it came out whole */
-.mglog li{display:grid;grid-template-columns:8px 1fr;gap:10px;align-items:start}
-.mgnm{font-size:13px;font-weight:650;color:var(--ink);margin-right:8px}
+.mgnm{font-size:13px;font-weight:500;color:var(--ink);margin-right:8px}
 .mgnote2{font-size:12px;color:var(--muted)}
+.mgsec{float:right;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
 .mglog li.ok .mgnm,.mglog li.on .mgnm{color:var(--ink)}
 .mgwhat{display:block;font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.5}
 .mglog li.on .mgwhat,.mglog li.ok .mgwhat{color:var(--ink2)}
@@ -644,7 +693,8 @@ catch(e){document.documentElement.setAttribute('data-theme','light');}})();
     <nav id="nav">
       <button data-v="browse" class="on">Browse</button>
       <button data-v="graph">Graph</button>
-      <button data-v="add">Add My Skill</button>
+      <button data-v="compose">Compose</button>
+      <button data-v="add">Upload</button>
       <button data-v="mine">My Skills</button>
     </nav>
     <div class="bartools">
@@ -655,6 +705,7 @@ catch(e){document.documentElement.setAttribute('data-theme','light');}})();
 </header>
 <main>
   <section class="view pad" id="v-browse"></section>
+  <section class="view pad" id="v-compose"></section>
   <section class="view pad" id="v-add"></section>
   <section class="view pad" id="v-mine"></section>
 </main>
@@ -824,12 +875,14 @@ function show(v){
   document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+v));
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   if(v==='browse'&&!R.browse){renderBrowse();R.browse=1;}
+  if(v==='compose'&&!R.compose){renderCompose();R.compose=1;}
   if(v==='add'&&!R.add){renderAdd();R.add=1;}
   if(v==='mine'){renderMine();}
   if(v==='graph'){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==='graph'));
     API('/api/list?sort=shared').then(d=>{const t=(d.items||[])[0];if(t)openSkill(t.id);});}}
 const R={};
-/* the landing page routes by hash: #graph #graph=<id> #browse #browse=<activity> #add #mine #dups #q=… */
+/* the landing page routes by hash: #graph #graph=<id> #browse #browse=<activity> #compose
+   #compose=<a>,<b> #add #mine #dups #q=… */
 function applyHash(){
   if((location.hash||'')==='#signin'){show('mine');
     setTimeout(()=>{if(!signedIn())askSignIn('Sign in to keep your own list.');},80);return true;}
@@ -839,6 +892,12 @@ function applyHash(){
     if(!R.browse){renderBrowse().then(()=>{R.browse=1;go();});}else go();};
   if(h.startsWith('q=')){const q=h.slice(2);const b=document.getElementById('q');if(b)b.value=q;toBrowse({q});return true;}
   if(h==='dups'){toBrowse({sort:'dups',has:'dups'});return true;}
+  if(h==='compose'||h.startsWith('compose=')){
+    show('compose');
+    const pair=h.startsWith('compose=')?h.slice(8).split(',').map(Number).filter(n=>n>=0):null;
+    const go=()=>{if(pair&&pair.length===2){cmPick(0,pair[0]);cmPick(1,pair[1]);}};
+    if(!R.compose){renderCompose().then(()=>{R.compose=1;go();});}else go();
+    return true;}
   if(h.startsWith('browse=')){const v=h.slice(7);show('browse');
     const go=()=>selectDim('activity',v);
     if(!R.browse){renderBrowse().then(()=>{R.browse=1;go();});}else go();return true;}
@@ -1115,6 +1174,19 @@ function drawForce(host,nodes,edges,opts){opts=opts||{};const W=opts.W||900,H=op
   hi(rest,false);
   // the relation list highlights its node in the graph on hover
   window._hlNode=id=>hi(id>=0&&idx[id]?id:rest,false);
+  // a merge is about a pair, and `hi` can only focus one node — so the pair gets its own:
+  // both ends lit, the line between them lit, everything else dropped away
+  window._hlPair=(a,b,on)=>{
+    if(!on||!idx[a]||!idx[b]){hi(rest,false);return;}
+    lineEls.forEach(L=>{const it=(L.a===a&&L.b===b)||(L.a===b&&L.b===a);
+      L.el.setAttribute('opacity',(it?0.95:0.05).toFixed(2));});
+    for(const id in groupEls){const mine=+id===a||+id===b;
+      groupEls[id].classList.toggle('dim',!mine);groupEls[id].classList.toggle('hot',mine);}
+    lG.textContent='';
+    [a,b].forEach(id=>{const n=idx[id];if(!n)return;
+      const t=document.createElementNS(NS,'text');t.setAttribute('x',n.x);
+      t.setAttribute('y',n.y-rOf(n)-5);t.setAttribute('text-anchor','middle');
+      t.setAttribute('class','glbl foc');t.textContent=(n.name||'').slice(0,28);lG.appendChild(t);});};
   if(opts.animate===false||matchMedia('(prefers-reduced-motion: reduce)').matches){return svg;}
   eG.style.opacity='0';
   const dur=opts.dur||280,t0=performance.now();
@@ -1194,7 +1266,7 @@ function renderSkillPage(s){const el=document.getElementById('skillpage');const 
         s.steps.map((x,ix)=>`<span class="wstep" data-si="${ix}">${esc(x)}</span>`).join('')+`</div>`:'')+
       ((s.tech||[]).length?`<div class="eyebrow">Tech</div><div class="kv">`+
         s.tech.map(t=>`<span class="tag">${esc(t)}</span>`).join('')+`</div>`:'')+
-      `<div id="sprel"></div></div></div>`;
+      `<div id="spmerge"></div><div id="sprel"></div></div></div>`;
   document.getElementById('spfav').onclick=async()=>{const r=await POST('/api/fav',{id:s.id});
     if(!r||r.error){askSignIn('Sign in to save this skill.');return;}
     if(r.on)FAVS.add(s.id);else FAVS.delete(s.id);const b=document.getElementById('spfav');
@@ -1231,12 +1303,96 @@ async function loadSPGraph(quick,auto){
     if(j!=null&&(e.sim||0)>=SP.minsim-1e-9)keep.add(j);});
   g.edges=g.edges.filter(e=>keep.has(e.a)&&keep.has(e.b));
   g.nodes=(g.nodes||[]).filter(n=>keep.has(n.id));
-  const nodes=g.nodes.map(n=>({...n})),edges=g.edges.map(e=>({a:e.a,b:e.b,type:e.type,sim:e.sim,dir:e.dir||0}));
+  const nodes=g.nodes.map(n=>({...n})),
+        edges=g.edges.map(e=>({a:e.a,b:e.b,type:e.type,sim:e.sim,dir:e.dir||0,shared:e.shared}));
   drawForce(document.getElementById('spg'),nodes,edges,{W:1160,H:800,center:SP.id,colorEdge:true,colorNode:capPalette(nodes),iters:Math.max(80,Math.min(240,Math.round(26000/Math.max(1,nodes.length)))),dur:quick?150:300,onClick:n=>{if(n.id>=0)showFullInfo(n.id,SP.id);}});
   const c=document.getElementById('spgc');
   if(c){const k=nodes.filter(n=>n.tier===0).length;
     c.textContent=`${k} in focus · ${nodes.length} skills · ${edges.length} relations`;}
-  renderSPList(g);}
+  renderSPList(g);
+  renderMergePanel(nodes,edges);}
+
+/* ===== MERGEABLE HERE =====
+   The count that licenses a merge is already on every edge the server sends, and the graph
+   already draws those edges — but a line among forty is not something you can scan, and the
+   merge button used to live three clicks deep in a modal footer, offered only against the
+   centre. This lists every pair in view that clears the bar, including two neighbours of the
+   centre, which was not reachable at all before. */
+// the panel's own state. NOT on MG: openMerge reassigns that object wholesale, so anything
+// the panel kept there vanishes the first time someone opens the modal
+const MGP={pairs:[],nm:{},have:null,all:false};
+const MGSHOW=8;
+async function renderMergePanel(nodes,edges){
+  const host=document.getElementById('spmerge');if(!host)return;
+  // whether this instance can merge at all. The deployed site has neither the documents nor a
+  // key, so without this the panel offers buttons that open a modal only to say so — the list
+  // is still worth showing there, the buttons are not
+  if(!CAPS){try{CAPS=await API('/api/caps');}catch(_){CAPS={merge:false,min_shared:2};}}
+  const min=(CAPS&&CAPS.min_shared)||2, c=SP.id;
+  const nm={};nodes.forEach(n=>nm[n.id]=n);
+  // pairs involving THIS skill, which is what the page is about. Among-neighbour pairs are
+  // mergeable too — 877 of them on a busy skill — but a list that long is not a list; naming
+  // both ends yourself is what Compose is for.
+  const pairs=edges
+    .filter(e=>(e.a===c||e.b===c)&&e.type!=='near'
+               &&typeof e.shared==='number'&&e.shared>=min&&nm[e.a]&&nm[e.b])
+    .sort((x,y)=>y.shared-x.shared);
+  if(!pairs.length){host.innerHTML='';return;}
+  MGP.pairs=pairs;MGP.nm=nm;MGP.have=null;MGP.all=false;
+  paintMergePanel();
+  // which of these can actually run: one call for the whole neighbourhood, not one per row
+  const ids=[...new Set(pairs.flatMap(e=>[e.a,e.b]))];
+  try{MGP.have=await API('/api/merge/have?ids='+ids.join(','));}catch(_){return;}
+  if(document.getElementById('mgrows'))paintMergePanel();}
+
+function paintMergePanel(){
+  const host=document.getElementById('spmerge');if(!host)return;
+  const pairs=MGP.pairs||[],nm=MGP.nm||{};
+  const shown=MGP.all?pairs:pairs.slice(0,MGSHOW),rest=pairs.length-shown.length;
+  const off=!(CAPS&&CAPS.merge);
+  // nearly every neighbour clears a bar of two, so the count ranks rather than admits — the
+  // strongest pairs first is the whole value of the list
+  host.innerHTML=`<div class="eyebrow">Mergeable here<span class="mgcount">${pairs.length} `+
+    `pair${pairs.length>1?'s':''}</span></div><div class="mgrows" id="mgrows">`+
+    shown.map((e,i)=>mgRow(e,nm,i,MGP.have,off)).join('')+`</div>`+
+    (rest>0?`<button class="cmclear" id="mgmore" style="margin:0 0 16px">+${rest} more</button>`
+           :(MGP.all&&pairs.length>MGSHOW
+             ?`<button class="cmclear" id="mgless" style="margin:0 0 16px">Show fewer</button>`:''))+
+    (off?`<div class="mgoff">Merging is not set up on this instance — it needs the SKILL.md `+
+         `bundle and an API key, which the hosted copy does not carry. Run it locally to `+
+         `compose from these.</div>`:'');
+  wireMergeRows(shown,nm);
+  const more=document.getElementById('mgmore'),less=document.getElementById('mgless');
+  if(more)more.onclick=()=>{MGP.all=true;paintMergePanel();};
+  if(less)less.onclick=()=>{MGP.all=false;paintMergePanel();};}
+
+function spHilite(ids,on){if(window._hlPair)window._hlPair(ids[0],ids[1],on);}
+
+function mgRow(e,nm,i,have,off){
+  // `have` is null until the lookup returns, so the list draws immediately and then learns
+  // which rows cannot run — rather than making the reader wait to see anything
+  const a=nm[e.a],b=nm[e.b];
+  const missing=have?[a,b].filter(n=>have[n.id]===false):[];
+  const act=off ? ''
+    : missing.length
+      ? `<span class="mgno">${esc(missing.map(n=>clip(n.name,18)).join(' and '))} `+
+        `${missing.length>1?'have':'has'} no SKILL.md</span>`
+      : `<button class="mggo" data-i="${i}">Merge ⧉</button>`;
+  return `<div class="mgrow${missing.length?' off':''}" data-i="${i}">`+
+    `<div class="mgpair"><b>${esc(clip(a.name,26))}</b><span class="mgamp">+</span>`+
+    `<b>${esc(clip(b.name,26))}</b></div>`+
+    `<div class="mgmeta"><span>${e.shared} shared operation${e.shared>1?'s':''}</span>${act}</div></div>`;}
+
+function wireMergeRows(pairs,nm){
+  document.querySelectorAll('#mgrows .mgrow').forEach(el=>{
+    const e=pairs[+el.dataset.i];if(!e)return;
+    // hovering a row lights the two skills and the line between them, so the list and the
+    // canvas are one thing rather than two views of the same data
+    el.onmouseenter=()=>spHilite([e.a,e.b],true);
+    el.onmouseleave=()=>spHilite([e.a,e.b],false);});
+  document.querySelectorAll('#mgrows .mggo').forEach(btn=>{
+    const e=pairs[+btn.dataset.i];if(!e)return;
+    btn.onclick=ev=>{ev.stopPropagation();openMerge(e.a,e.b);};});}
 const SPFOLD={same:false,contain:false,intersect:false};
 // The panel is a fixed 400px, which is wrong in both directions: too narrow to read long skill
 // names, too wide when you want the graph. Make the split a user setting, and remember it.
@@ -1265,7 +1421,7 @@ function renderAddLocalOnly(el){
   // missing, and the answer is the command that supplies it. Telling that reader to "run it
   // locally" is telling them to do what they are already doing.
   if(ME&&ME.upstream)return renderAddNeeds(el);
-  el.innerHTML=`<h1>Add My Skill to the graph</h1>`+
+  el.innerHTML=`<h1>Upload your own skill</h1>`+
     `<p class="lede">This one runs on your machine, not here.</p>`+
     `<div class="localonly">`+
       `<p>Placing a skill reads your <b>SKILL.md</b>, labels it with a model, and searches the `+
@@ -1296,7 +1452,7 @@ function renderAddNeeds(el){
   if(!why.api_key)need.push(['No API key is set.',
     'Reading and labelling a SKILL.md calls a model.',
     'export OPENROUTER_API_KEY=...']);
-  el.innerHTML=`<h1>Add My Skill to the graph</h1>`+
+  el.innerHTML=`<h1>Upload your own skill</h1>`+
     `<p class="lede">Two more things and this works.</p>`+
     `<div class="localonly" style="max-width:660px">`+
       need.map(([t,d,c])=>`<p><b>${t}</b> ${d}</p><pre class="localcmd">${esc(c)}</pre>`).join('')+
@@ -1540,7 +1696,7 @@ function mgConfirm(p){
     `<div class="imsec"><div class="imk">Shared</div>`+
       `<div class="imv" style="display:block"><div class="mgnote">`+
       `<b>${p.shared} similar operation${p.shared===1?'':'s'}</b>, counted when the graph was `+
-      `built. Which ones comes out of Read.</div></div></div>`;
+      `built. Which operations they are comes out of Retrieve.</div></div></div>`;
 
   if(!p.eligible&&p.ready){
     // two different reasons, and the wrong one reads as a bug: a pair can clear the count and
@@ -1575,10 +1731,10 @@ function mgConfirm(p){
 function mgPaint(body,foot){document.getElementById('mergemodal').innerHTML=mgShell(body,foot);}
 
 const MGSTAGES=[
-  ['pull',  'Read',  'both documents, as their authors wrote them'],
-  ['plan',  'Plan',  'sections, steps, tools, what cannot be lost'],
-  ['write', 'Write', 'one document, against that plan'],
-  ['check', 'Check', 'does it meet the plan, and still read like them']];
+  ['pull',  'Retrieve',   'Both source documents and the structure recorded for them'],
+  ['plan',  'Reconcile',  'Where the two agree, where they collide, and what must survive'],
+  ['write', 'Synthesise', 'A single document covering both workflows'],
+  ['check', 'Validate',   'Coverage against the specification, and fidelity to the sources']];
 
 let MGST={};
 
@@ -1586,8 +1742,11 @@ function mgRunning(){
   const li=MGSTAGES.map(([id,name,note])=>{
     const st=MGST[id];
     const cls=st&&st.state==='done'?'ok':(st&&st.state==='running'?'on':'');
+    // the time sits on the step that spent it, not only in the total: the three model calls
+    // are 74s, 132s and 82s, and a single number at the bottom cannot say which one to blame
+    const sec=st&&st.secs!=null?`<span class="mgsec">${st.secs}s</span>`:'';
     return `<li class="${cls}"><span class="mgdot"></span><div>`+
-      `<b class="mgnm">${esc(name)}</b><span class="mgnote2">${esc(note)}</span>`+
+      `<b class="mgnm">${esc(name)}</b><span class="mgnote2">${esc(note)}</span>${sec}`+
       (st&&st.what?`<span class="mgwhat">${st.what}</span>`:'')+`</div></li>`;}).join('');
   mgPaint(`<ul class="mglog">${li}</ul><div class="mgclock" id="mgclock">0s</div>`,'');
   if(!MG.tick){MG.t0=Date.now();
@@ -1600,6 +1759,7 @@ const pill=(t,k)=>`<span class="mgpill${k?' '+k:''}">${esc(t)}</span>`;
 function mgStage(e){
   const st=MGST[e.id]=MGST[e.id]||{};
   st.state=e.state;
+  if(e.secs!=null)st.secs=e.secs;
   if(e.state!=='done'){mgRunning();return;}
   if(e.id==='pull'){
     const f=x=>`${(x.chars/1000).toFixed(1)}KB · ${x.sections} sections · ${x.steps} steps`;
@@ -1614,7 +1774,7 @@ function mgStage(e){
         : pill('blocked','bad')+pill(`${e.blockers} collision${e.blockers===1?'':'s'}`,'bad'))+
       (e.name?pill(esc(e.name),'good'):'')+
       (e.why?`<span class="mgwhat">${esc(e.why)}</span>`:'')+
-      (e.name_why?`<span class="mgwhat">名字：${esc(e.name_why)}</span>`:'');
+      (e.name_why?`<span class="mgwhat">Name: ${esc(e.name_why)}</span>`:'');
   }else if(e.id==='write'){
     // shape is reported beside the plan's target, because the failure this replaced kept the
     // content and lost the organisation, and only a comparison shows that
@@ -1893,10 +2053,121 @@ function selectDim(dim,val){show('browse');const go=()=>{BR={dim,val,page:0,q:''
 // The public site cannot run this: it ships without the embeddings and without a key, so the
 // honest thing is to say so up front rather than let someone paste a file and hit a 503.
 let CAPS=null;
+/* ===== COMPOSE =====
+   Merging used to be reachable only from a skill's own graph, and only against the one skill
+   at the centre. This is the other direction: name the two yourself. The second slot is where
+   the work is — once the first is chosen it lists that skill's mergeable neighbours, ranked by
+   shared operations, so the ordinary path is two clicks and cannot assemble a pair that the
+   gate will turn away. Free search stays underneath for the case where you already know both. */
+const CM={a:null,b:null,q:['',''],opts:[[],[]],sug:null};
+
+async function renderCompose(){
+  const el=document.getElementById('v-compose');
+  try{CAPS=await API('/api/caps');}catch(_){}
+  let can={ready:false,min_shared:2};
+  try{can=await API('/api/merge/can');}catch(_){}
+  CM.min=can.min_shared||2;CM.ready=can.ready;
+  el.innerHTML=`<h1>Compose a skill from two</h1>`+
+    `<p class="lede">Two skills that share concrete operations are, often enough, one skill `+
+    `written twice. Pick both and one <b>SKILL.md</b> is written from them — the workflow of `+
+    `each, the disagreements settled, nothing dropped silently.</p>`+
+    (can.ready?'':`<p class="lede cmwarn">Merging is not set up on this instance`+
+      `${can.why&&can.why.api_key===false?' — no API key':''}.</p>`)+
+    `<div class="cmwrap"><div id="cm0"></div><div class="cmplus">+</div><div id="cm1"></div></div>`+
+    `<div class="cmverdict" id="cmv"></div>`;
+  cmSlot(0);cmSlot(1);cmVerdict();
+  return true;}
+
+function cmSlot(k){
+  const host=document.getElementById('cm'+k);if(!host)return;
+  const rec=k?CM.b:CM.a;
+  if(rec){
+    host.className='cmslot filled';
+    host.innerHTML=`<div class="cmpicked"><h3>${esc(rec.name)}</h3>`+
+      `<div class="mt">${esc(rec.activity||'')}${rec.capability?' · '+esc(rec.capability):''}</div>`+
+      `<button class="cmclear" data-k="${k}">Change</button></div>`;
+    host.querySelector('.cmclear').onclick=()=>{
+      if(k)CM.b=null;else{CM.a=null;CM.sug=null;}
+      cmSlot(k);if(!k)cmSlot(1);cmVerdict();};
+    return;}
+  host.className='cmslot';
+  host.innerHTML=`<input class="cmq" id="cmq${k}" placeholder="Search a skill…" `+
+    `value="${esc(CM.q[k])}" autocomplete="off"><div class="cmlist" id="cml${k}"></div>`;
+  const inp=host.querySelector('.cmq');
+  inp.oninput=()=>{CM.q[k]=inp.value;clearTimeout(CM['_t'+k]);
+    CM['_t'+k]=setTimeout(()=>cmSearch(k),180);};
+  cmSearch(k);}
+
+async function cmSearch(k){
+  const list=document.getElementById('cml'+k);if(!list)return;
+  const q=(CM.q[k]||'').trim();
+  // the second slot with nothing typed is the suggestion case: the first skill's own
+  // neighbours, which is the only list here that is guaranteed to clear the gate
+  if(!q&&k===1&&CM.a){
+    if(!CM.sug){
+      try{const s=await API('/api/skill?id='+CM.a.id);
+        CM.sug=(s.relations||[]).filter(r=>typeof r.shared==='number'&&r.shared>=CM.min)
+          .sort((x,y)=>y.shared-x.shared).slice(0,14);}catch(_){CM.sug=[];}}
+    if(!CM.sug.length){
+      list.innerHTML=`<div class="cmhead">Nothing mergeable with this one</div>`+
+        `<div class="cmopt" style="cursor:default"><span>No skill shares `+
+        `${CM.min} counted operations with ${esc(clip(CM.a.name,24))}. Search for one anyway `+
+        `— Reconcile will say whether they can be one skill.</span></div>`;return;}
+    list.innerHTML=`<div class="cmhead">Related to ${esc(clip(CM.a.name,22))}</div>`+
+      CM.sug.map(r=>`<button class="cmopt" data-id="${r.id}"><b>${esc(r.name)}</b>`+
+        `<span><i class="sh">${r.shared} shared</i> · ${esc(r.activity||'')}</span></button>`).join('');
+    cmWire(k,list);return;}
+  if(!q){list.innerHTML=`<div class="cmhead">Start typing a name</div>`;return;}
+  let d={items:[]};
+  try{d=await API('/api/list?n=14&q='+encodeURIComponent(q));}catch(_){}
+  const other=k?CM.a:CM.b;
+  const items=(d.items||[]).filter(x=>!other||x.id!==other.id);
+  if(!items.length){list.innerHTML=`<div class="cmhead">No skill by that name</div>`;return;}
+  list.innerHTML=items.map(x=>`<button class="cmopt" data-id="${x.id}"><b>${esc(x.name)}</b>`+
+    `<span>${esc(x.activity||'')}${x.capability?' · '+esc(x.capability):''}</span></button>`).join('');
+  cmWire(k,list);}
+
+function cmWire(k,list){
+  list.querySelectorAll('.cmopt[data-id]').forEach(b=>
+    b.onclick=()=>cmPick(k,+b.dataset.id));}
+
+async function cmPick(k,id){
+  let rec=null;
+  try{rec=await API('/api/skill?id='+id);}catch(_){return;}
+  if(k){CM.b={id,name:rec.name,activity:rec.activity,capability:rec.capability};}
+  else{CM.a={id,name:rec.name,activity:rec.activity,capability:rec.capability};CM.sug=null;}
+  CM.q[k]='';cmSlot(k);if(!k)cmSlot(1);cmVerdict();}
+
+async function cmVerdict(){
+  const v=document.getElementById('cmv');if(!v)return;
+  if(!CM.a||!CM.b){v.innerHTML='';return;}
+  v.innerHTML=`<div class="cmshared"><span class="spin"></span></div>`;
+  let p=null;
+  try{p=await API(`/api/merge/pair?a=${CM.a.id}&b=${CM.b.id}`);}catch(_){}
+  if(!p||p.error){v.innerHTML=`<div class="cmshared cmwarn">Could not read this pair.</div>`;return;}
+  const miss=[];
+  if(p.have_docs&&p.have_docs[0]===false)miss.push(CM.a.name);
+  if(p.have_docs&&p.have_docs[1]===false)miss.push(CM.b.name);
+  if(miss.length){
+    v.innerHTML=`<div class="cmshared cmwarn">${esc(miss.join(' and '))} `+
+      `${miss.length>1?'reached':'reached'} the corpus through a listing rather than a file, `+
+      `so there is no <b>SKILL.md</b> to merge${miss.length>1?'':''}.</div>`;return;}
+  const sh=typeof p.shared==='number'?p.shared:0;
+  // a pair with no counted relation is not refused here: the count comes from the graph, and
+  // whether these two can be one skill is Reconcile's answer, made after reading both
+  const line=sh>=CM.min
+    ? `<b>${sh} shared operation${sh>1?'s':''}</b>, counted when the graph was built.`
+    : `These two have <b>no counted relation</b> in the graph. Reconcile reads both documents `+
+      `and will say whether they can be one skill — it may well refuse.`;
+  v.innerHTML=`<div class="cmshared">${line}</div>`+
+    `<button class="btn cmgo" id="cmgo"${CM.ready?'':' disabled'}>⧉ Merge these two →</button>`;
+  const go=document.getElementById('cmgo');
+  if(go)go.onclick=()=>openMerge(CM.a.id,CM.b.id);}
+
 async function renderAdd(){const el=document.getElementById('v-add');
   try{CAPS=await API('/api/caps');}catch(e){CAPS={add:false,why:{}};}   // re-read: a restart can change it
   if(!CAPS.add)return renderAddLocalOnly(el);
-  el.innerHTML=`<h1>Add My Skill to the graph</h1><p class="lede">Drop your <b>SKILL.md</b> or paste it in full. Everything is extracted from the file itself — you label nothing. About 20 seconds.</p>`+
+  el.innerHTML=`<h1>Upload your own skill</h1><p class="lede">Drop your <b>SKILL.md</b> or paste it in full. Everything is extracted from the file itself — you label nothing. About 20 seconds.</p>`+
    `<div class="addwrap"><div class="form">
      <div class="drop" id="drop">⬆ Drop a <b>SKILL.md</b> here, or click to choose<input type="file" id="file" accept=".md,.markdown,.txt" hidden></div>
      <div class="orline"><span>or paste the file</span></div>

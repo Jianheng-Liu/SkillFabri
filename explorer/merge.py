@@ -33,7 +33,7 @@ DOCS = ROOT / "data" / "skillmd.zip"          # fetched, not committed; see tool
 # after reading both documents, and it says no only when it can name what collides.
 MIN_SHARED = 2
 MODEL = os.environ.get("SF_MERGE_MODEL") or (
-    "gpt-5.6-terra" if os.environ.get("CRS_OAI_KEY") else "openai/gpt-5.4")
+    "gpt-5.6-luna" if os.environ.get("CRS_OAI_KEY") else "openai/gpt-5.4")
 
 _z = None
 
@@ -97,15 +97,28 @@ def shape(md: str) -> dict:
     The writer is told these because the failure they address is measurable: sources with
     sixteen and six sections produced a merge with seven, which kept the content and read like
     neither of them.
+
+    Fenced blocks come out first. A shell comment is `# text` at the start of a line, which is
+    also an h1, and these documents are mostly bash: one 9.4KB source counted 49 headings and
+    has 19. Both prompts were given that number, and the writer was asked to match a depth the
+    source never had.
     """
-    heads = re.findall(r"^(#{1,4})\s+(.+)$", md, re.M)
+    prose, fenced = [], False
+    for ln in md.split("\n"):
+        if ln.lstrip().startswith("```"):
+            fenced = not fenced
+            continue
+        if not fenced:
+            prose.append(ln)
+    prose = "\n".join(prose)
+    heads = re.findall(r"^(#{1,4})\s+(.+)$", prose, re.M)
     return {"chars": len(md),
             "sections": [f"{'#' * len(h)} {t.strip()}" for h, t in heads][:24],
             "n_sections": len(heads),
-            "numbered_steps": len(re.findall(r"^\s*\d+[.)]\s", md, re.M)),
-            "bullets": len(re.findall(r"^\s*[-*]\s", md, re.M)),
+            "numbered_steps": len(re.findall(r"^\s*\d+[.)]\s", prose, re.M)),
+            "bullets": len(re.findall(r"^\s*[-*]\s", prose, re.M)),
             "code_blocks": len(re.findall(r"```", md)) // 2,
-            "tables": len(re.findall(r"^\|.+\|$", md, re.M)),
+            "tables": len(re.findall(r"^\|.+\|$", prose, re.M)),
             "frontmatter": md.lstrip().startswith("---")}
 
 
@@ -174,6 +187,11 @@ When it merges — which is the normal case — specify the document:
                 further-reading section: the companion files do not travel with the merged
                 document. Anything one carried that the merge needs belongs in the step that
                 needs it.
+
+WRITE EVERY FIELD BELOW IN ENGLISH, whatever language the sources are in. These strings are
+read on a page, not by the skill. Two things keep their original form: a sentence quoted from
+a source in `a_says`/`b_says`, which is evidence and must stay verbatim, and any literal the
+skill emits or matches on.
 
 Return JSON only:
 {"decision":"merge|blocked",
@@ -260,6 +278,9 @@ Report on the shape too, since a document can satisfy every requirement and stil
 like the thing it replaced: which planned sections are present, and which planned tool
 invocations appear nowhere.
 
+Write `reason` and `rules_out` in English, whatever language the document is in. `evidence`
+is a quotation and stays exactly as the document has it.
+
 Return JSON only:
 {"verdicts":[{"id":"K1","status":"supported|contradicted|unknown","evidence":"...",
               "rules_out":"...","reason":"one sentence"}],
@@ -344,7 +365,10 @@ def _once(cl, system, user, model, effort="medium", max_tokens=20000):
                             out.append(c["text"])
                 elif e.get("type") == "response.completed":
                     u = (e.get("response") or {}).get("usage") or {}
-                    usage = {"in": u.get("input_tokens", 0), "out": u.get("output_tokens", 0)}
+                    # output_tokens counts the reasoning too, so on its own it cannot say
+                    # whether a slow call is thinking or writing — and those have different fixes
+                    usage = {"in": u.get("input_tokens", 0), "out": u.get("output_tokens", 0),
+                             "reason": (u.get("output_tokens_details") or {}).get("reasoning_tokens", 0)}
         return _parse("".join(out)), usage
     kw = {"model": model, "temperature": 0, "max_tokens": max_tokens,
           "messages": [{"role": "system", "content": system},
@@ -389,11 +413,23 @@ def _labels(rec):
 
 def run(a_rec, b_rec, a_id, b_id, model=None, effort="medium", all_recs=None):
     """Four steps, reporting as each finishes."""
+    import time as _t
     model = model or MODEL
     total = {"in": 0, "out": 0}
+    mark = {"t": _t.time()}
 
     def bill(u):
         total["in"] += u.get("in", 0); total["out"] += u.get("out", 0)
+
+    def spent(u=None):
+        # each step says how long it took and what it cost, because "it is slow" was answered
+        # for a long time by guessing which step it was, and the answer was the middle one
+        now = _t.time(); dt = now - mark["t"]; mark["t"] = now
+        d = {"secs": round(dt, 1)}
+        if u:
+            d["tok_in"], d["tok_out"] = u.get("in", 0), u.get("out", 0)
+            d["tok_reason"] = u.get("reason", 0)
+        return d
 
     # ---- 1. pull
     yield {"t": "stage", "id": "pull", "state": "running"}
@@ -402,7 +438,7 @@ def run(a_rec, b_rec, a_id, b_id, model=None, effort="medium", all_recs=None):
         yield {"t": "error", "message": "one of the source documents is missing"}
         return
     fa, fb = shape(sa), shape(sb)
-    yield {"t": "stage", "id": "pull", "state": "done",
+    yield {"t": "stage", "id": "pull", "state": "done", **spent(),
            "a": {"chars": fa["chars"], "sections": fa["n_sections"],
                  "steps": fa["numbered_steps"], "code": fa["code_blocks"]},
            "b": {"chars": fb["chars"], "sections": fb["n_sections"],
@@ -424,7 +460,7 @@ def run(a_rec, b_rec, a_id, b_id, model=None, effort="medium", all_recs=None):
                     model, effort, 14000); bill(u)
     rel = plan.get("decision") or plan.get("relation")
     blockers = [b for b in (plan.get("blockers") or []) if isinstance(b, dict)]
-    yield {"t": "stage", "id": "plan", "state": "done", "relation": rel,
+    yield {"t": "stage", "id": "plan", "state": "done", **spent(u), "relation": rel,
            "why": plan.get("why"), "blockers": len(blockers),
            "name": plan.get("name"), "name_why": plan.get("name_why"),
            "outline": len(plan.get("outline") or []),
@@ -458,7 +494,7 @@ def run(a_rec, b_rec, a_id, b_id, model=None, effort="medium", all_recs=None):
                  model, effort, 22000); bill(u)
     doc = w.get("skill_md") or ""
     fm = shape(doc) if doc else {}
-    yield {"t": "stage", "id": "write", "state": "done", "chars": len(doc),
+    yield {"t": "stage", "id": "write", "state": "done", **spent(u), "chars": len(doc),
            "name": plan.get("name"), "sections": fm.get("n_sections"),
            "steps": fm.get("numbered_steps"), "code": fm.get("code_blocks"),
            "planned_sections": len(plan.get("outline") or []),
@@ -481,7 +517,7 @@ def run(a_rec, b_rec, a_id, b_id, model=None, effort="medium", all_recs=None):
                  model, effort, 12000); bill(u)
     verdicts = [x for x in (v.get("verdicts") or []) if isinstance(x, dict)]
     by = Counter(x.get("status") for x in verdicts)
-    yield {"t": "stage", "id": "check", "state": "done", "by_status": dict(by),
+    yield {"t": "stage", "id": "check", "state": "done", **spent(u), "by_status": dict(by),
            "kept": round(by["supported"] / len(keep), 3) if keep else None,
            "undecided": round(by["unknown"] / len(keep), 3) if keep else None,
            "outline_followed": v.get("outline_followed"), "tools_kept": v.get("tools_kept")}

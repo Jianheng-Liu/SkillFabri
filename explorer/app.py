@@ -12,7 +12,7 @@ Serves the SPA (explorer.html) + a small JSON API. Run locally:
   python explorer/app.py --port 8000
 """
 from __future__ import annotations
-import argparse, json, os, re, threading, collections
+import argparse, json, os, re, threading, collections, queue
 from pathlib import Path
 import numpy as np
 from flask import Flask, request, jsonify, send_file, redirect
@@ -648,6 +648,18 @@ def merge_can():
                     "min_shared": _merge.MIN_SHARED})
 
 
+@app.get("/api/merge/have")
+def merge_have():
+    """Which of these skills have a SKILL.md on file.
+
+    1,722 of the 14,460 reached the corpus through a listing rather than a file, so a panel
+    that offers every counted pair offers merges that cannot run. One call per graph load
+    answers it for the whole neighbourhood instead of one call per row.
+    """
+    ids = [int(x) for x in (request.args.get("ids") or "").split(",") if x.strip().lstrip("-").isdigit()]
+    return jsonify({str(i): bool(_merge.source(i)) for i in ids if 0 <= i < D["N"]})
+
+
 @app.get("/api/merge/pair")
 def merge_pair():
     """What a merge of this pair would involve, asked before anyone pays for it."""
@@ -658,9 +670,9 @@ def merge_pair():
     ra, rb = D["recs"][a], D["recs"][b]
     return jsonify({
         "a": {"id": a, "name": ra["name"], "activity": ra["activity"], "capability": ra["capability"],
-              "steps": len(D["nodes"][a].get("steps") or []), "chars": len(_merge.source(a))},
+              "steps": len(D["nodes"][a].get("steps") or []), "chars": len(_merge.source(a) or "")},
         "b": {"id": b, "name": rb["name"], "activity": rb["activity"], "capability": rb["capability"],
-              "steps": len(D["nodes"][b].get("steps") or []), "chars": len(_merge.source(b))},
+              "steps": len(D["nodes"][b].get("steps") or []), "chars": len(_merge.source(b) or "")},
         # no reconstructed pairing: the judge recorded how many, never which, and rebuilding
         # it from shared words found 3 of 5 on a pair that corresponds one to one. The merge's
         # first step reads both documents and answers it.
@@ -703,14 +715,38 @@ def merge_run():
             yield ev({"t": "error", "message": "no SKILL.md on file for " + " and ".join(missing)})
             return
         yield ev({"t": "start", "a": D["recs"][a]["name"], "b": D["recs"][b]["name"], "shared": sh})
-        try:
-            # the generator reports each step as it finishes, which is the point: four of the
-            # five decide whether the skill should exist and whether it came out intact
-            for msg in _merge.run(D["nodes"][a], D["nodes"][b], a, b, model, effort,
-                                  all_recs=D["nodes"]):
-                yield ev(msg)
-        except Exception as e:
-            yield ev({"t": "error", "message": str(e)})
+
+        # The generator blocks inside a model call, so it cannot yield while one is running,
+        # and the three calls measured 74s, 132s and 82s: up to 132 seconds with not one byte
+        # on the socket. Anything in the path that reaps idle connections takes it, and the
+        # reader sees the body end with no `done` — which is the "connection closed before the
+        # merge finished" people have been getting. Running it in a thread lets this loop send
+        # a comment frame while it waits; the client's parser keeps only `data:` lines and
+        # drops these, so a heartbeat costs the page nothing.
+        q = queue.Queue()
+
+        def work():
+            try:
+                # four steps, each reported as it finishes: three of them decide whether the
+                # skill should exist and whether it came out intact
+                for msg in _merge.run(D["nodes"][a], D["nodes"][b], a, b, model, effort,
+                                      all_recs=D["nodes"]):
+                    q.put(("ev", msg))
+            except Exception as e:
+                q.put(("ev", {"t": "error", "message": str(e)}))
+            finally:
+                q.put(("end", None))
+
+        threading.Thread(target=work, daemon=True).start()
+        while True:
+            try:
+                kind, msg = q.get(timeout=10)
+            except queue.Empty:
+                yield ": still working\n\n"
+                continue
+            if kind == "end":
+                break
+            yield ev(msg)
 
     # no @cached here, and no buffering in front of it: this route is the one that writes
     return app.response_class(stream(), mimetype="text/event-stream",

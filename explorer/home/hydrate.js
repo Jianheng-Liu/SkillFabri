@@ -313,7 +313,7 @@
       // the pair hangs off <body>, not off the nav: the nav is React-owned and the next render
       // discards anything appended into it. .sf-tools re-creates the header's own container
       // geometry so they line up with the wordmark rather than with the viewport edge.
-      // The four nav links do not fit beside the wordmark on a phone. Below 680px the row hides
+      // The five nav links do not fit beside the wordmark on a phone. Below 680px the row hides
       // and this opens in its place. The items are real <a>s carrying the same labels, so the
       // page's existing click router resolves them — no second copy of the routing table.
       var mb=document.createElement('button');mb.className='sf-burger';mb.setAttribute('aria-label','Menu');
@@ -321,7 +321,7 @@
       mb.innerHTML='<svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor"'+
         ' stroke-width="1.9" stroke-linecap="round"><path d="M3 5.5h14M3 10h14M3 14.5h14"/></svg>';
       var menu=document.createElement('div');menu.className='sf-menu';
-      menu.innerHTML=['Browse','Graph','Add My Skill','My Skills']
+      menu.innerHTML=['Browse','Graph','Compose','Upload','My Skills']
         .map(function(t){return '<a href="#">'+t+'</a>';}).join('');
       var shut=function(){menu.classList.remove('open');mb.setAttribute('aria-expanded','false');};
       mb.onclick=function(e){e.stopPropagation();
