@@ -41,12 +41,31 @@ def human(n):
         n /= 1024
 
 
+def sha256_of(path, chunk=1 << 22):
+    import hashlib
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for b in iter(lambda: f.read(chunk), b""):
+            h.update(b)
+    return h.hexdigest()
+
+
 def download(name, dest, force=False):
     import requests
     url = f"{BASE}/{name}"
     tmp = dest.with_suffix(dest.suffix + ".part")
 
     head = requests.head(url, allow_redirects=True, timeout=30)
+    # The Hub puts the file's sha256 in X-Linked-ETag, so the HEAD we already make is enough
+    # to tell a current copy from a stale one. It rides on the 302 to the CDN, not on the
+    # response that redirect lands on — the CDN sends an ETag of its own, which is a different
+    # hash of the same bytes and matches nothing we can compute here.
+    want_sha = None
+    for resp in list(head.history) + [head]:
+        v = (resp.headers.get("x-linked-etag") or "").strip('"')
+        if len(v) == 64:
+            want_sha = v
+            break
     # A dataset that does not exist answers 401, not 404 — the Hub will not reveal whether a
     # private repo is there. Either way the file is not reachable, and a traceback is no use.
     if head.status_code in (401, 403, 404):
@@ -60,10 +79,24 @@ def download(name, dest, force=False):
 
     if dest.exists() and not force:
         if total and dest.stat().st_size == total:
-            print(f"  {name}: already here ({human(total)})")
-            return dest
-        print(f"  {name}: local copy is {human(dest.stat().st_size)}, "
-              f"remote is {human(total)} — refetching")
+            # Size alone said "already here" and was wrong: a local skill_embeddings.npy from
+            # an earlier build was byte-for-byte the same length as the current one and a
+            # different file, so it was never replaced and the neighbours it found came from
+            # vectors the shipped graph was not built on.
+            if want_sha and len(want_sha) == 64:
+                have_sha = sha256_of(dest)
+                if have_sha == want_sha:
+                    print(f"  {name}: already here ({human(total)})")
+                    return dest
+                print(f"  {name}: same size as the remote but a different file "
+                      f"({have_sha[:12]}… vs {want_sha[:12]}…) — refetching")
+                tmp.unlink(missing_ok=True)    # a resume would append to the wrong bytes
+            else:
+                print(f"  {name}: already here ({human(total)})")
+                return dest
+        else:
+            print(f"  {name}: local copy is {human(dest.stat().st_size)}, "
+                  f"remote is {human(total)} — refetching")
 
     have = tmp.stat().st_size if tmp.exists() else 0
     headers = {"Range": f"bytes={have}-"} if have else {}
@@ -92,6 +125,11 @@ def download(name, dest, force=False):
                     print(f"  {name}: {human(done)} / {human(total)}", flush=True)
     if tty:
         print()
+    if want_sha and len(want_sha) == 64:
+        got = sha256_of(tmp)
+        if got != want_sha:
+            sys.exit(f"  {name}: downloaded {human(done)} but the checksum does not match "
+                     f"({got[:12]}… vs {want_sha[:12]}…). Delete the .part file and retry.")
     tmp.replace(dest)
     return dest
 
