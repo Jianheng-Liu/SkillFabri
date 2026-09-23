@@ -1278,7 +1278,10 @@ function relBadges(s){const r=s.rel||{};let h='';
   if(r.intersect)h+=`<span class="relb" title="skills sharing ≥2 workflow operations">⊓ ${r.intersect}</span>`;
   if(r.contain)h+=`<span class="relb" title="strict superset / subset relations">⊑ ${r.contain}</span>`;
   return h;}
-function wireCards(root){root.querySelectorAll('.card').forEach(c=>{c.onclick=e=>{if(e.target.closest('.favb'))return;openSkill(+c.dataset.id);};});
+// A card opens the skill's own card first and the graph from there, the way a benchmark card
+// does. Going straight to the graph put a reader in front of forty neighbours before they had
+// seen what the one they clicked actually does.
+function wireCards(root){root.querySelectorAll('.card').forEach(c=>{c.onclick=e=>{if(e.target.closest('.favb'))return;showFullInfo(+c.dataset.id);};});
   root.querySelectorAll('.favb').forEach(b=>b.onclick=async e=>{e.stopPropagation();
     const id=+b.dataset.fav;const r=await POST('/api/fav',{id});
     if(!r||r.error){askSignIn('Sign in to save this skill.');return;}
@@ -2591,7 +2594,7 @@ function renderPlacement(r){const res=document.getElementById('a-res');const nm=
       `<span id="savedmsg" class="hint" style="align-self:center">saving to <b>My Skills</b>…</span></div>`+
     `<div class="eyebrow">Nearest skills</div><div class="grid" style="grid-template-columns:1fr">`+r.neighbours.slice(0,20).map(n=>{const col=n.type?cssv(REL[n.type]):'var(--muted)';const d=n.type==='contain'?(n.broader==='new'?' ⊇ yours':(n.broader==='cand'?' ⊆ yours':'')):'';
       return `<div class="card" data-id="${n.id}"><div class="top"><span class="nm">${esc(n.name)}</span><span class="pop mono" style="color:${col}">${n.type?esc(n.type)+d:'candidate'} · ${n.sim.toFixed(2)}</span></div><div class="sum" style="min-height:0">${esc(n.summary)}</div><div class="meta"><span class="tag act" style="background:${actCol(n.activity)}">${esc(n.activity)}</span><span class="tag cap">${esc(n.capability)}</span></div></div>`;}).join('')+`</div>`;
-  res.querySelectorAll('.card').forEach(c=>c.onclick=()=>openSkill(+c.dataset.id));
+  res.querySelectorAll('.card').forEach(c=>c.onclick=()=>showFullInfo(+c.dataset.id));
   const shown=r.neighbours.slice(0,20),sset=new Set(shown.map(n=>n.id));
   const cn={id:-1,name:nm,activity:r.suggested_activity,pop:0},nodes=[cn].concat(shown.map(n=>({id:n.id,name:n.name,activity:n.activity,pop:n.pop})));
   const star=shown.map(n=>({a:-1,b:n.id,type:n.type||'intersect',sim:n.sim||0.75,
