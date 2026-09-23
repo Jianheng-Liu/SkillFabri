@@ -1,0 +1,45 @@
+app = "skillfabri"
+primary_region = "sjc"          # change to the region nearest your readers: iad, lhr, nrt, hkg …
+
+[build]
+
+[env]
+  PORT = "8080"
+  SF_DB = "/data/user.db"        # on the volume, so accounts survive a deploy
+
+# Accounts, saved skills and uploads live here. Without it they would sit in the container's
+# writable layer and be discarded on every deploy — which is what the old JSON store did.
+[mounts]
+  source = "sfdata"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+
+  # Booting parses 33 MB of JSON into memory, which takes on the order of ten seconds. That is
+  # fine once and unacceptable on every cold request, so the machine stays up instead of
+  # scaling to zero. This is the line to change if the bill matters more than the first click.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 40
+    hard_limit = 80
+
+[[vm]]
+  size = "shared-cpu-2x"
+  # Two cores, and one gunicorn worker each. A worker holds its own copy of the parsed corpus
+  # (~420 MB), so two need well past 1 GB; 2 GB leaves headroom for the response cache and
+  # request buffers. The core count is the reason for two workers — see the Dockerfile.
+  memory = "2gb"
+
+[checks.up]
+  type = "http"
+  port = 8080
+  path = "/api/caps"
+  interval = "30s"
+  timeout = "5s"
+  grace_period = "40s"          # longer than the boot-time corpus load

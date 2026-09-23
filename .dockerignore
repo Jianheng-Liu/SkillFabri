@@ -1,0 +1,27 @@
+# Everything the running site does not read. The image carries explorer/ plus two JSON files.
+.git
+.venv
+venv
+__pycache__
+*.pyc
+env.sh
+scratch/
+docs/
+
+# the raw corpus and the pipeline are for rebuilding the graph, not for serving it
+data/raw/
+pipeline/
+graph/
+
+# data/ by allow-list, not deny-list. Everything here is sent to the remote builder unless it
+# is excluded, and a deny-list only stops what someone remembered to name: the one this
+# replaced let through the account token in upstream.json, the SKILL.md bundle, and every
+# .bak.json / .bak.npy (the `*.bak` rule matches neither). The image needs two files.
+data/*
+!data/skills.json
+!data/relations.json
+
+# working files
+*.bak
+*.orig
+.DS_Store
